@@ -252,50 +252,103 @@ class QuestaoCard(QFrame):
     clicked = pyqtSignal(int)
     editClicked = pyqtSignal(int)
     deleteClicked = pyqtSignal(int)
+    addToListClicked = pyqtSignal(int) # Novo sinal para "Adicionar à Lista"
 
-    def __init__(self, questao_data, parent=None):
+    def __init__(self, questao_dto: 'QuestaoResponseDTO', parent=None):
         super().__init__(parent)
-        self.questao_id = questao_data.get('id')
-        self.init_ui(questao_data)
+        self.questao_id = questao_dto.id
+        self.init_ui(questao_dto)
 
-    def init_ui(self, data):
+    def init_ui(self, dto: 'QuestaoResponseDTO'):
         self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
-        self.setStyleSheet("QFrame { border: 1px solid #ddd; border-radius: 5px; background-color: white; padding: 10px; } QFrame:hover { border-color: #0078d4; background-color: #f0f8ff; }")
+        self.setStyleSheet("""
+            QFrame {
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                background-color: white;
+                padding: 15px;
+            }
+            QFrame:hover {
+                border-color: #1abc9c;
+                background-color: #f0fff4;
+            }
+        """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+
         layout = QVBoxLayout(self)
+
+        # Cabeçalho
         header_layout = QHBoxLayout()
-        titulo = data.get('titulo', 'Sem título')
-        enunciado = data.get('enunciado', '')
-        preview_text = titulo if titulo else enunciado[:100] + "..."
-        title_label = QLabel(preview_text)
-        title_label.setStyleSheet("font-weight: bold; font-size: 13px;")
+
+        # Título
+        titulo = dto.titulo or 'Sem título'
+        title_label = QLabel(titulo)
+        title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c3e50;")
         title_label.setWordWrap(True)
         header_layout.addWidget(title_label, 1)
-        tipo_label = QLabel(data.get('tipo', 'N/A'))
-        tipo_label.setStyleSheet("background-color: #e3f2fd; color: #1976d2; padding: 3px 8px; border-radius: 3px; font-size: 10px;")
+
+        # Badge de tipo
+        tipo_label = QLabel(dto.tipo)
+        tipo_color = "#2196f3" if dto.tipo == 'OBJETIVA' else "#9c27b0"
+        tipo_label.setStyleSheet(f"""
+            QLabel {{
+                background-color: {tipo_color};
+                color: white;
+                padding: 4px 10px;
+                border-radius: 3px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+        """)
         header_layout.addWidget(tipo_label)
+
         layout.addLayout(header_layout)
+
+        # Preview do enunciado
+        enunciado_preview = (dto.enunciado[:150] + "...") if len(dto.enunciado) > 150 else dto.enunciado
+        enunciado_label = QLabel(enunciado_preview)
+        enunciado_label.setStyleSheet("color: #555; margin-top: 8px; font-size: 12px;")
+        enunciado_label.setWordWrap(True)
+        layout.addWidget(enunciado_label)
+
+        # Metadados
         meta_layout = QHBoxLayout()
-        fonte = data.get('fonte', 'N/A')
-        ano = data.get('ano', 'N/A')
-        dificuldade = data.get('dificuldade', 'N/A')
-        meta_text = f"📚 {fonte} | 📅 {ano} | ⭐ {dificuldade}"
+        meta_layout.setContentsMargins(0, 10, 0, 5)
+
+        meta_text = f"📚 {dto.fonte or 'N/A'} • 📅 {dto.ano or 'N/A'} • ⭐ {dto.dificuldade_nome or 'N/A'}"
         meta_label = QLabel(meta_text)
-        meta_label.setStyleSheet("color: #666; font-size: 11px;")
+        meta_label.setStyleSheet("color: #777; font-size: 11px;")
         meta_layout.addWidget(meta_label)
+
         meta_layout.addStretch()
         layout.addLayout(meta_layout)
+
+        # Botões de ação
         btn_layout = QHBoxLayout()
+
+        btn_visualizar = QPushButton("👁️ Visualizar")
+        btn_visualizar.setMaximumWidth(100)
+        btn_visualizar.clicked.connect(lambda: self.clicked.emit(self.questao_id)) # Conectar ao clicked do card
+        btn_layout.addWidget(btn_visualizar)
+
+        btn_editar = QPushButton("✏️ Editar")
+        btn_editar.setMaximumWidth(100)
+        btn_editar.clicked.connect(lambda: self.editClicked.emit(self.questao_id))
+        btn_layout.addWidget(btn_editar)
+
+        btn_adicionar = QPushButton("➕ Adicionar à Lista")
+        btn_adicionar.setMaximumWidth(150)
+        btn_adicionar.clicked.connect(lambda: self.addToListClicked.emit(self.questao_id)) # Conectar ao novo sinal
+        btn_layout.addWidget(btn_adicionar)
+
         btn_layout.addStretch()
-        btn_edit = QPushButton("Editar")
-        btn_edit.setMaximumWidth(80)
-        btn_edit.clicked.connect(lambda: self.editClicked.emit(self.questao_id))
-        btn_layout.addWidget(btn_edit)
-        btn_delete = QPushButton("Excluir")
-        btn_delete.setMaximumWidth(80)
-        btn_delete.setStyleSheet("color: #d32f2f;")
-        btn_delete.clicked.connect(lambda: self.deleteClicked.emit(self.questao_id))
-        btn_layout.addWidget(btn_delete)
+
+        btn_excluir = QPushButton("🗑️")
+        btn_excluir.setMaximumWidth(40)
+        btn_excluir.setStyleSheet("QPushButton { color: #e74c3c; }")
+        btn_excluir.clicked.connect(lambda: self.deleteClicked.emit(self.questao_id))
+        btn_layout.addWidget(btn_excluir)
+
         layout.addLayout(btn_layout)
 
     def mousePressEvent(self, event):

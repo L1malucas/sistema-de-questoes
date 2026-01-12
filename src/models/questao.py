@@ -252,26 +252,12 @@ class QuestaoModel:
 
     @staticmethod
     def buscar_por_filtros(titulo: str = None, tipo: str = None,
-                          ano: int = None, fonte: str = None,
-                          id_dificuldade: int = None, tags: List[int] = None,
-                          apenas_ativas: bool = True,
+                          ano_inicio: int = None, ano_fim: int = None,
+                          fonte: str = None, id_dificuldade: int = None,
+                          tags: List[int] = None, apenas_ativas: bool = True,
                           limite: int = None, offset: int = 0) -> List[Dict]:
         """
         Busca questões aplicando múltiplos filtros (lógica AND).
-
-        Args:
-            titulo: Busca parcial no campo titulo (LIKE)
-            tipo: 'OBJETIVA' ou 'DISCURSIVA'
-            ano: Ano da questão
-            fonte: Banca/Vestibular
-            id_dificuldade: ID da dificuldade
-            tags: Lista de IDs de tags (AND - questão deve ter TODAS)
-            apenas_ativas: Se True, apenas questões ativas
-            limite: Número máximo de resultados
-            offset: Deslocamento para paginação
-
-        Returns:
-            List[Dict]: Lista de questões que atendem aos filtros
         """
         try:
             filtros = []
@@ -281,16 +267,22 @@ class QuestaoModel:
                 filtros.append("q.ativo = 1")
 
             if titulo:
-                filtros.append("q.titulo LIKE ?")
-                params.append(f"%{titulo}%")
+                filtros.append("(q.titulo LIKE ? OR q.enunciado LIKE ?)")
+                params.extend([f"%{titulo}%", f"%{titulo}%"])
 
             if tipo:
                 filtros.append("q.tipo = ?")
                 params.append(tipo)
 
-            if ano:
-                filtros.append("q.ano = ?")
-                params.append(ano)
+            if ano_inicio and ano_fim:
+                filtros.append("q.ano BETWEEN ? AND ?")
+                params.extend([ano_inicio, ano_fim])
+            elif ano_inicio:
+                filtros.append("q.ano >= ?")
+                params.append(ano_inicio)
+            elif ano_fim:
+                filtros.append("q.ano <= ?")
+                params.append(ano_fim)
 
             if fonte:
                 filtros.append("q.fonte = ?")
@@ -300,9 +292,7 @@ class QuestaoModel:
                 filtros.append("q.id_dificuldade = ?")
                 params.append(id_dificuldade)
 
-            # Filtro por tags (AND)
             if tags and len(tags) > 0:
-                # Subquery para garantir que a questão tem TODAS as tags
                 placeholders = ','.join(['?' for _ in tags])
                 filtros.append(f"""
                     q.id_questao IN (
@@ -332,10 +322,7 @@ class QuestaoModel:
             """
 
             results = db.execute_query(query, tuple(params))
-
-            if results:
-                return [dict(row) for row in results]
-            return []
+            return [dict(row) for row in results] if results else []
 
         except Exception as e:
             logger.error(f"Erro ao buscar questões por filtros: {e}")

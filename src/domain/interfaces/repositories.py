@@ -64,7 +64,8 @@ class IQuestaoRepository(Protocol):
         self,
         titulo: Optional[str] = None,
         tipo: Optional[str] = None,
-        ano: Optional[int] = None,
+        ano_inicio: Optional[int] = None,
+        ano_fim: Optional[int] = None,
         fonte: Optional[str] = None,
         id_dificuldade: Optional[int] = None,
         tags: Optional[List[int]] = None,
@@ -75,7 +76,8 @@ class IQuestaoRepository(Protocol):
         Args:
             titulo: Filtro por título (busca parcial)
             tipo: Filtro por tipo ('OBJETIVA' ou 'DISCURSIVA')
-            ano: Filtro por ano
+            ano_inicio: Ano inicial do intervalo de busca
+            ano_fim: Ano final do intervalo de busca
             fonte: Filtro por fonte (busca parcial)
             id_dificuldade: Filtro por dificuldade
             tags: Lista de IDs de tags

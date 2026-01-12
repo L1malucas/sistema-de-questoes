@@ -243,15 +243,8 @@ class QuestaoControllerRefactored:
         try:
             logger.info(f"Buscando questões com filtros: {filtro.to_dict()}")
 
-            questoes = self.questao_repository.buscar_por_filtros(
-                titulo=filtro.titulo,
-                tipo=filtro.tipo,
-                ano=filtro.ano,
-                fonte=filtro.fonte,
-                id_dificuldade=filtro.id_dificuldade,
-                tags=filtro.tags if filtro.tags else None,
-                ativa=filtro.ativa
-            )
+            # Desempacotar o DTO para passar como argumentos nomeados
+            questoes = self.questao_repository.buscar_por_filtros(**filtro.to_dict())
 
             logger.info(f"Encontradas {len(questoes)} questões")
 
@@ -259,10 +252,11 @@ class QuestaoControllerRefactored:
             dtos = []
             for questao in questoes:
                 try:
+                    # O repositório já mapeia 'id_questao' para 'id'
                     dto = QuestaoResponseDTO.from_dict(questao)
                     dtos.append(dto)
                 except Exception as e:
-                    logger.warning(f"Erro ao converter questão {questao.get('id')}: {e}")
+                    logger.warning(f"Erro ao converter dados da questão {questao.get('id_questao')}: {e}")
 
             return dtos
 

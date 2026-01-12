@@ -13,7 +13,8 @@ class FiltroQuestaoDTO:
 
     titulo: Optional[str] = None
     tipo: Optional[str] = None  # 'OBJETIVA' ou 'DISCURSIVA'
-    ano: Optional[int] = None
+    ano_inicio: Optional[int] = None
+    ano_fim: Optional[int] = None
     fonte: Optional[str] = None
     id_dificuldade: Optional[int] = None
     tags: List[int] = field(default_factory=list)
@@ -25,22 +26,18 @@ class FiltroQuestaoDTO:
 
         if self.titulo:
             dados['titulo'] = self.titulo
-
         if self.tipo:
             dados['tipo'] = self.tipo
-
-        if self.ano is not None:
-            dados['ano'] = self.ano
-
+        if self.ano_inicio is not None:
+            dados['ano_inicio'] = self.ano_inicio
+        if self.ano_fim is not None:
+            dados['ano_fim'] = self.ano_fim
         if self.fonte:
             dados['fonte'] = self.fonte
-
         if self.id_dificuldade is not None:
             dados['id_dificuldade'] = self.id_dificuldade
-
         if self.tags:
             dados['tags'] = self.tags
-
         dados['ativa'] = self.ativa
 
         return dados
@@ -51,7 +48,8 @@ class FiltroQuestaoDTO:
         return cls(
             titulo=data.get('titulo'),
             tipo=data.get('tipo'),
-            ano=data.get('ano'),
+            ano_inicio=data.get('ano_inicio'),
+            ano_fim=data.get('ano_fim'),
             fonte=data.get('fonte'),
             id_dificuldade=data.get('id_dificuldade'),
             tags=data.get('tags', []),
@@ -63,7 +61,8 @@ class FiltroQuestaoDTO:
         return any([
             self.titulo,
             self.tipo,
-            self.ano is not None,
+            self.ano_inicio is not None,
+            self.ano_fim is not None,
             self.fonte,
             self.id_dificuldade is not None,
             self.tags

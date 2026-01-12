@@ -105,7 +105,8 @@ class QuestaoRepositoryImpl(IQuestaoRepository):
         self,
         titulo: Optional[str] = None,
         tipo: Optional[str] = None,
-        ano: Optional[int] = None,
+        ano_inicio: Optional[int] = None,
+        ano_fim: Optional[int] = None,
         fonte: Optional[str] = None,
         id_dificuldade: Optional[int] = None,
         tags: Optional[List[int]] = None,
@@ -117,43 +118,31 @@ class QuestaoRepositoryImpl(IQuestaoRepository):
 
             if titulo is not None:
                 kwargs['titulo'] = titulo
-
             if tipo is not None:
                 kwargs['tipo'] = tipo
-
-            if ano is not None:
-                kwargs['ano'] = ano
-
+            if ano_inicio is not None:
+                kwargs['ano_inicio'] = ano_inicio
+            if ano_fim is not None:
+                kwargs['ano_fim'] = ano_fim
             if fonte is not None:
                 kwargs['fonte'] = fonte
-
             if id_dificuldade is not None:
                 kwargs['id_dificuldade'] = id_dificuldade
-
             if tags is not None:
                 kwargs['tags'] = tags
 
-            questoes = QuestaoModel.buscar_por_filtros(**kwargs)
+            questoes = QuestaoModel.buscar_por_filtros(apenas_ativas=ativa, **kwargs)
 
-            # Mapear campos e filtrar por ativa
-            questoes_mapeadas = []
+            # Mapear id_questao para id para compatibilidade com DTO
             for q in questoes:
-                # Mapear id_questao para id e ativo para ativa
                 q['id'] = q.get('id_questao')
-                q['ativa'] = q.get('ativo', True)
-
-                # Filtrar por ativa se necessário
-                if ativa and not q['ativa']:
-                    continue
-
-                questoes_mapeadas.append(q)
 
             logger.info(
-                f"Busca de questões: {len(questoes_mapeadas)} encontradas "
+                f"Busca de questões: {len(questoes)} encontradas "
                 f"(filtros: {len(kwargs)})"
             )
 
-            return questoes_mapeadas
+            return questoes
 
         except Exception as e:
             logger.error(f"Erro ao buscar questões por filtros: {e}", exc_info=True)
