@@ -24,6 +24,7 @@ import logging
 
 from src.controllers.questao_controller_refactored import criar_questao_controller
 from src.application.dtos import FiltroQuestaoDTO
+from src.utils import ErrorHandler
 
 logger = logging.getLogger(__name__)
 
@@ -351,8 +352,13 @@ class SearchPanel(QWidget):
             logger.info(f"Busca concluída: {len(questoes_dto)} questões encontradas")
 
         except Exception as e:
-            logger.error(f"Erro ao buscar questões: {e}", exc_info=True)
+            # Tratamento centralizado de erros
             self.results_count_label.setText("Erro ao buscar questões")
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao buscar questões"
+            )
 
     def _get_filtros(self):
         """Coleta filtros atuais para busca"""

@@ -25,6 +25,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QIcon, QKeySequence
 import logging
 
+from src.utils import ErrorHandler
+
 logger = logging.getLogger(__name__)
 
 

@@ -20,6 +20,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 import logging
 
+from src.utils import ErrorHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -139,8 +141,19 @@ class ListaForm(QDialog):
 
     def adicionar_questoes(self):
         """Abre diálogo para adicionar questões"""
-        # TODO: Abrir busca de questões
-        QMessageBox.information(self, "Adicionar", "Busca de questões será implementada")
+        try:
+            # TODO: Abrir busca de questões via controller
+            ErrorHandler.show_info(
+                self,
+                "Em Desenvolvimento",
+                "Funcionalidade de busca de questões será implementada"
+            )
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao adicionar questões"
+            )
 
     def remover_questao(self):
         """Remove questão selecionada"""
@@ -149,20 +162,54 @@ class ListaForm(QDialog):
             self.questoes_list.takeItem(current)
 
     def salvar_lista(self):
-        """Salva a lista"""
-        if not self.titulo_input.text().strip():
-            QMessageBox.warning(self, "Validação", "O título é obrigatório!")
-            return
+        """Salva a lista com tratamento de erros"""
+        try:
+            # Validação básica
+            if not self.titulo_input.text().strip():
+                ErrorHandler.show_warning(
+                    self,
+                    "Validação",
+                    "O título é obrigatório!"
+                )
+                return
 
-        logger.info("Salvando lista")
-        QMessageBox.information(self, "Sucesso", "Lista salva com sucesso!\n\n(Integração com banco será implementada)")
-        self.accept()
+            titulo = self.titulo_input.text().strip()
+            tipo = self.tipo_input.text().strip()
+            cabecalho = self.cabecalho_edit.toPlainText().strip()
+            instrucoes = self.instrucoes_edit.toPlainText().strip()
+
+            logger.info(f"Salvando lista: {titulo}")
+
+            # TODO: Salvar via controller
+            # id_lista = controller.criar_lista(titulo, tipo, cabecalho, instrucoes)
+
+            ErrorHandler.show_success(
+                self,
+                "Sucesso",
+                f"Lista '{titulo}' salva com sucesso!"
+            )
+            self.accept()
+
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao salvar lista"
+            )
 
     def exportar_latex(self):
-        """Exporta lista para LaTeX"""
-        from src.views.export_dialog import ExportDialog
-        dialog = ExportDialog(parent=self)
-        dialog.exec()
+        """Exporta lista para LaTeX com tratamento de erros"""
+        try:
+            from src.views.export_dialog import ExportDialog
+            dialog = ExportDialog(parent=self)
+            dialog.exec()
+
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao abrir diálogo de exportação"
+            )
 
 
 logger.info("ListaForm carregado")

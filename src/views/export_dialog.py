@@ -22,6 +22,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 import logging
 
+from src.utils import ErrorHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -155,24 +157,50 @@ class ExportDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def exportar(self):
-        """Executa a exportação"""
-        # Escolher local para salvar
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Salvar arquivo LaTeX",
-            "",
-            "LaTeX Files (*.tex)"
-        )
+        """Executa a exportação com tratamento de erros"""
+        try:
+            # Escolher local para salvar
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Salvar arquivo LaTeX",
+                "",
+                "LaTeX Files (*.tex)"
+            )
 
-        if file_path:
+            if not file_path:
+                return  # Usuário cancelou
+
             logger.info(f"Exportando para: {file_path}")
-            # TODO: Implementar lógica de exportação
-            QMessageBox.information(
+
+            # Coletar configurações
+            config = {
+                'modo': 'direto' if self.direct_radio.isChecked() else 'manual',
+                'gabarito': self.gabarito_check.isChecked(),
+                'resolucoes': self.resolucao_check.isChecked(),
+                'randomizar': self.randomizar_check.isChecked(),
+                'colunas': self.colunas_spin.value(),
+                'linhas_resposta': self.espaco_spin.value(),
+                'escala_imagens': self.escala_slider.value() / 100.0,
+                'template': self.template_combo.currentText()
+            }
+
+            # TODO: Implementar lógica de exportação via service
+            # export_service.exportar_latex(file_path, config)
+
+            ErrorHandler.show_success(
                 self,
                 "Sucesso",
-                f"Arquivo exportado com sucesso!\n\n{file_path}\n\n(Geração LaTeX será implementada)"
+                f"Arquivo exportado com sucesso!\n\n{file_path}\n\n"
+                "(Geração LaTeX será implementada)"
             )
             self.accept()
+
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao exportar arquivo"
+            )
 
 
 logger.info("ExportDialog carregado")

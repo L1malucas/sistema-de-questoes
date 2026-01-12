@@ -28,6 +28,7 @@ from src.views.widgets import (
 )
 from src.controllers.questao_controller_refactored import criar_questao_controller
 from src.application.dtos import QuestaoCreateDTO, QuestaoUpdateDTO, AlternativaDTO
+from src.utils import ErrorHandler, handle_errors
 
 logger = logging.getLogger(__name__)
 
@@ -359,7 +360,10 @@ class QuestaoForm(QDialog):
         return data
 
     def save_questao(self):
-        """Salva a questão usando o controller"""
+        """Salva a questão usando o controller
+
+        Usa ErrorHandler para tratamento automático de erros
+        """
         logger.info("Salvando questão")
 
         # Validação básica de UI
@@ -369,119 +373,136 @@ class QuestaoForm(QDialog):
         # Coletar dados do formulário
         form_data = self.get_form_data()
 
-        try:
-            if self.is_editing:
-                # Atualizar questão existente
-                self._atualizar_questao(form_data)
-            else:
-                # Criar nova questão
-                self._criar_questao(form_data)
-
-        except Exception as e:
-            logger.error(f"Erro ao salvar questão: {e}", exc_info=True)
-            QMessageBox.critical(
-                self,
-                "Erro",
-                f"Erro ao salvar questão:\n{str(e)}"
-            )
+        if self.is_editing:
+            # Atualizar questão existente
+            self._atualizar_questao(form_data)
+        else:
+            # Criar nova questão
+            self._criar_questao(form_data)
 
     def _criar_questao(self, form_data):
-        """Cria nova questão via controller"""
-        # Converter alternativas para DTOs
-        alternativas_dto = []
-        for alt in form_data['alternativas']:
-            alternativas_dto.append(AlternativaDTO(
-                letra=alt['letra'],
-                texto=alt['texto'],
-                correta=alt.get('correta', False),
-                imagem=alt.get('imagem')
-            ))
+        """Cria nova questão via controller
 
-        # Criar DTO de criação
-        dto = QuestaoCreateDTO(
-            titulo=form_data['titulo'],
-            enunciado=form_data['enunciado'],
-            tipo=form_data['tipo'],
-            ano=form_data['ano'],
-            fonte=form_data['fonte'],
-            id_dificuldade=form_data['id_dificuldade'],
-            resolucao=form_data.get('resolucao'),
-            imagem_enunciado=form_data.get('imagem_enunciado'),
-            escala_imagem_enunciado=form_data.get('escala_imagem_enunciado'),
-            alternativas=alternativas_dto,
-            tags=form_data.get('tags', [])
-        )
+        Tratamento de erros automático via exceções do controller
+        """
+        try:
+            # Converter alternativas para DTOs
+            alternativas_dto = []
+            for alt in form_data['alternativas']:
+                alternativas_dto.append(AlternativaDTO(
+                    letra=alt['letra'],
+                    texto=alt['texto'],
+                    correta=alt.get('correta', False),
+                    imagem=alt.get('imagem')
+                ))
 
-        # Salvar via controller
-        id_questao = self.controller.criar_questao_completa(dto)
-
-        if id_questao:
-            QMessageBox.information(
-                self,
-                "Sucesso",
-                f"Questão criada com sucesso!\n\nID: {id_questao}"
+            # Criar DTO de criação
+            dto = QuestaoCreateDTO(
+                titulo=form_data['titulo'],
+                enunciado=form_data['enunciado'],
+                tipo=form_data['tipo'],
+                ano=form_data['ano'],
+                fonte=form_data['fonte'],
+                id_dificuldade=form_data['id_dificuldade'],
+                resolucao=form_data.get('resolucao'),
+                imagem_enunciado=form_data.get('imagem_enunciado'),
+                escala_imagem_enunciado=form_data.get('escala_imagem_enunciado'),
+                alternativas=alternativas_dto,
+                tags=form_data.get('tags', [])
             )
 
-            # Emitir sinal e fechar
-            self.questaoSaved.emit(id_questao)
-            self.accept()
-        else:
-            QMessageBox.warning(
+            # Salvar via controller (pode lançar exceções)
+            id_questao = self.controller.criar_questao_completa(dto)
+
+            if id_questao:
+                # Sucesso
+                ErrorHandler.show_success(
+                    self,
+                    "Sucesso",
+                    f"Questão criada com sucesso!\n\nID: {id_questao}"
+                )
+
+                # Emitir sinal e fechar
+                self.questaoSaved.emit(id_questao)
+                self.accept()
+            else:
+                # Falha sem exceção (não deveria acontecer com novo controller)
+                ErrorHandler.show_warning(
+                    self,
+                    "Falha",
+                    "Não foi possível criar a questão.\n\n"
+                    "Consulte o log para mais detalhes."
+                )
+
+        except Exception as e:
+            # Tratamento centralizado de erros
+            ErrorHandler.handle_exception(
                 self,
-                "Falha",
-                "Não foi possível criar a questão.\n\n"
-                "Verifique os dados e tente novamente.\n"
-                "Consulte o log para mais detalhes."
+                e,
+                "Erro ao criar questão"
             )
 
     def _atualizar_questao(self, form_data):
-        """Atualiza questão existente via controller"""
-        # Converter alternativas para DTOs
-        alternativas_dto = []
-        for alt in form_data['alternativas']:
-            alternativas_dto.append(AlternativaDTO(
-                letra=alt['letra'],
-                texto=alt['texto'],
-                correta=alt.get('correta', False),
-                imagem=alt.get('imagem')
-            ))
+        """Atualiza questão existente via controller
 
-        # Criar DTO de atualização
-        dto = QuestaoUpdateDTO(
-            id_questao=self.questao_id,
-            titulo=form_data['titulo'],
-            enunciado=form_data['enunciado'],
-            tipo=form_data['tipo'],
-            ano=form_data['ano'],
-            fonte=form_data['fonte'],
-            id_dificuldade=form_data['id_dificuldade'],
-            resolucao=form_data.get('resolucao'),
-            imagem_enunciado=form_data.get('imagem_enunciado'),
-            escala_imagem_enunciado=form_data.get('escala_imagem_enunciado'),
-            alternativas=alternativas_dto if alternativas_dto else None,
-            tags=form_data.get('tags')
-        )
+        Tratamento de erros automático via exceções do controller
+        """
+        try:
+            # Converter alternativas para DTOs
+            alternativas_dto = []
+            for alt in form_data['alternativas']:
+                alternativas_dto.append(AlternativaDTO(
+                    letra=alt['letra'],
+                    texto=alt['texto'],
+                    correta=alt.get('correta', False),
+                    imagem=alt.get('imagem')
+                ))
 
-        # Atualizar via controller
-        sucesso = self.controller.atualizar_questao_completa(dto)
-
-        if sucesso:
-            QMessageBox.information(
-                self,
-                "Sucesso",
-                f"Questão atualizada com sucesso!\n\nID: {self.questao_id}"
+            # Criar DTO de atualização
+            dto = QuestaoUpdateDTO(
+                id_questao=self.questao_id,
+                titulo=form_data['titulo'],
+                enunciado=form_data['enunciado'],
+                tipo=form_data['tipo'],
+                ano=form_data['ano'],
+                fonte=form_data['fonte'],
+                id_dificuldade=form_data['id_dificuldade'],
+                resolucao=form_data.get('resolucao'),
+                imagem_enunciado=form_data.get('imagem_enunciado'),
+                escala_imagem_enunciado=form_data.get('escala_imagem_enunciado'),
+                alternativas=alternativas_dto if alternativas_dto else None,
+                tags=form_data.get('tags')
             )
 
-            # Emitir sinal e fechar
-            self.questaoSaved.emit(self.questao_id)
-            self.accept()
-        else:
-            QMessageBox.warning(
+            # Atualizar via controller (pode lançar exceções)
+            sucesso = self.controller.atualizar_questao_completa(dto)
+
+            if sucesso:
+                # Sucesso
+                ErrorHandler.show_success(
+                    self,
+                    "Sucesso",
+                    f"Questão atualizada com sucesso!\n\nID: {self.questao_id}"
+                )
+
+                # Emitir sinal e fechar
+                self.questaoSaved.emit(self.questao_id)
+                self.accept()
+            else:
+                # Falha sem exceção
+                ErrorHandler.show_warning(
+                    self,
+                    "Falha",
+                    "Não foi possível atualizar a questão.\n\n"
+                    "Consulte o log para mais detalhes."
+                )
+
+        except Exception as e:
+            # Tratamento centralizado de erros
+            ErrorHandler.handle_exception(
                 self,
-                "Falha",
-                "Não foi possível atualizar a questão.\n\n"
-                "Verifique os dados e tente novamente.\n"
-                "Consulte o log para mais detalhes."
+                e,
+                "Erro ao atualizar questão"
             )
 
     def show_preview(self):

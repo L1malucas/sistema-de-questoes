@@ -18,6 +18,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 import logging
 
+from src.utils import ErrorHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -148,12 +150,13 @@ class TagManager(QDialog):
         layout.addLayout(btn_layout)
 
     def load_tags(self):
-        """Carrega tags do banco"""
-        self.tree.clear()
+        """Carrega tags do banco com tratamento de erros"""
+        try:
+            self.tree.clear()
 
-        # TODO: Buscar do banco de dados
-        # Por enquanto, usar dados de exemplo
-        exemplo_tags = [
+            # TODO: Buscar do banco de dados via controller
+            # Por enquanto, usar dados de exemplo
+            exemplo_tags = [
             {'id': 1, 'nome': 'ÁLGEBRA', 'numeracao': '1', 'nivel': 1, 'id_pai': None, 'questoes': 15},
             {'id': 2, 'nome': 'FUNÇÕES', 'numeracao': '1.1', 'nivel': 2, 'id_pai': 1, 'questoes': 10},
             {'id': 3, 'nome': 'FUNÇÃO QUADRÁTICA', 'numeracao': '1.1.1', 'nivel': 3, 'id_pai': 2, 'questoes': 5},
@@ -182,7 +185,14 @@ class TagManager(QDialog):
 
             items[tag['id']] = item
 
-        self.tree.expandAll()
+            self.tree.expandAll()
+
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao carregar tags"
+            )
 
     def on_selection_changed(self):
         """Callback quando seleção muda"""
@@ -210,66 +220,144 @@ class TagManager(QDialog):
             self.btn_inativar.setEnabled(False)
 
     def criar_tag(self):
-        """Cria nova tag raiz"""
-        nome, ok = QInputDialog.getText(self, "Nova Tag", "Nome da tag:")
+        """Cria nova tag raiz com tratamento de erros"""
+        try:
+            nome, ok = QInputDialog.getText(self, "Nova Tag", "Nome da tag:")
 
-        if ok and nome:
+            if not ok or not nome.strip():
+                return
+
+            nome = nome.strip()
+
             logger.info(f"Criando tag: {nome}")
-            # TODO: Salvar no banco
-            QMessageBox.information(self, "Sucesso", f"Tag '{nome}' criada com sucesso!\n\n(Integração com banco será implementada)")
+            # TODO: Salvar no banco via controller
+            # controller.criar_tag(nome, nivel=1, id_pai=None)
+
+            ErrorHandler.show_success(
+                self,
+                "Sucesso",
+                f"Tag '{nome}' criada com sucesso!"
+            )
             self.load_tags()
+
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao criar tag"
+            )
 
     def criar_subtag(self):
-        """Cria sub-tag da tag selecionada"""
-        selected = self.tree.selectedItems()
-        if not selected:
-            return
+        """Cria sub-tag da tag selecionada com tratamento de erros"""
+        try:
+            selected = self.tree.selectedItems()
+            if not selected:
+                return
 
-        pai_nome = selected[0].text(0)
-        nome, ok = QInputDialog.getText(self, "Nova Sub-tag", f"Nome da sub-tag de '{pai_nome}':")
+            pai_nome = selected[0].text(0)
+            pai_id = selected[0].data(0, Qt.ItemDataRole.UserRole)
 
-        if ok and nome:
-            logger.info(f"Criando sub-tag: {nome}")
-            # TODO: Salvar no banco
-            QMessageBox.information(self, "Sucesso", f"Sub-tag '{nome}' criada com sucesso!")
+            nome, ok = QInputDialog.getText(self, "Nova Sub-tag", f"Nome da sub-tag de '{pai_nome}':")
+
+            if not ok or not nome.strip():
+                return
+
+            nome = nome.strip()
+
+            logger.info(f"Criando sub-tag: {nome} (pai: {pai_nome})")
+            # TODO: Salvar no banco via controller
+            # controller.criar_tag(nome, nivel=2, id_pai=pai_id)
+
+            ErrorHandler.show_success(
+                self,
+                "Sucesso",
+                f"Sub-tag '{nome}' criada com sucesso!"
+            )
             self.load_tags()
+
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao criar sub-tag"
+            )
 
     def editar_tag(self):
-        """Edita tag selecionada"""
-        selected = self.tree.selectedItems()
-        if not selected:
-            return
+        """Edita tag selecionada com tratamento de erros"""
+        try:
+            selected = self.tree.selectedItems()
+            if not selected:
+                return
 
-        nome_atual = selected[0].text(0)
-        nome, ok = QInputDialog.getText(self, "Editar Tag", "Novo nome:", text=nome_atual)
+            nome_atual = selected[0].text(0)
+            tag_id = selected[0].data(0, Qt.ItemDataRole.UserRole)
 
-        if ok and nome and nome != nome_atual:
+            nome, ok = QInputDialog.getText(self, "Editar Tag", "Novo nome:", text=nome_atual)
+
+            if not ok or not nome.strip():
+                return
+
+            nome = nome.strip()
+
+            if nome == nome_atual:
+                return  # Sem mudança
+
             logger.info(f"Editando tag: {nome_atual} -> {nome}")
-            # TODO: Atualizar no banco
-            QMessageBox.information(self, "Sucesso", "Tag atualizada com sucesso!")
+            # TODO: Atualizar no banco via controller
+            # controller.atualizar_tag(tag_id, nome=nome)
+
+            ErrorHandler.show_success(
+                self,
+                "Sucesso",
+                "Tag atualizada com sucesso!"
+            )
             self.load_tags()
+
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao editar tag"
+            )
 
     def inativar_tag(self):
-        """Inativa tag selecionada"""
-        selected = self.tree.selectedItems()
-        if not selected:
-            return
+        """Inativa tag selecionada com tratamento de erros"""
+        try:
+            selected = self.tree.selectedItems()
+            if not selected:
+                return
 
-        nome = selected[0].text(0)
+            nome = selected[0].text(0)
+            tag_id = selected[0].data(0, Qt.ItemDataRole.UserRole)
 
-        reply = QMessageBox.question(
-            self,
-            "Confirmar",
-            f"Deseja inativar a tag '{nome}'?\n\n"
-            "Tags inativas não aparecem nos filtros mas os dados são mantidos.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
+            reply = QMessageBox.question(
+                self,
+                "Confirmar",
+                f"Deseja inativar a tag '{nome}'?\n\n"
+                "Tags inativas não aparecem nos filtros mas os dados são mantidos.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
 
-        if reply == QMessageBox.StandardButton.Yes:
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
             logger.info(f"Inativando tag: {nome}")
-            # TODO: Inativar no banco
-            QMessageBox.information(self, "Sucesso", "Tag inativada com sucesso!")
+            # TODO: Inativar no banco via controller
+            # controller.inativar_tag(tag_id)
+
+            ErrorHandler.show_success(
+                self,
+                "Sucesso",
+                "Tag inativada com sucesso!"
+            )
             self.load_tags()
+
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao inativar tag"
+            )
 
 
 logger.info("TagManager carregado")

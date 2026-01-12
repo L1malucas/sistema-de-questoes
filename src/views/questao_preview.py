@@ -19,6 +19,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 import logging
 
+from src.utils import ErrorHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,8 +33,17 @@ class QuestaoPreview(QDialog):
         self.setWindowTitle("Preview da Questão")
         self.setMinimumSize(800, 600)
         self.resize(900, 700)
-        self.init_ui()
-        logger.info(f"QuestaoPreview inicializado (ID: {questao_data.get('id')})")
+
+        try:
+            self.init_ui()
+            logger.info(f"QuestaoPreview inicializado (ID: {questao_data.get('id')})")
+        except Exception as e:
+            ErrorHandler.handle_exception(
+                self,
+                e,
+                "Erro ao carregar preview"
+            )
+            self.close()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
