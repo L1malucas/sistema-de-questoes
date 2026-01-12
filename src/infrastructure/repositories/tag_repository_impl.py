@@ -14,119 +14,87 @@ logger = logging.getLogger(__name__)
 
 
 class TagRepositoryImpl(ITagRepository):
-    """Implementação de repositório de tags"""
+    """Implementação de repositório de tags usando TagModel."""
 
-    def criar(
-        self,
-        nome: str,
-        nivel: int,
-        id_pai: Optional[int] = None
-    ) -> Optional[int]:
-        """Cria uma tag"""
+    def criar(self, nome: str, numeracao: str, nivel: int, id_pai: Optional[int], ordem: int) -> Optional[int]:
+        """Cria uma tag. Note que o nome já é convertido para maiúsculo pelo Model."""
         try:
-            id_tag = TagModel.criar(
+            return TagModel.criar(
                 nome=nome,
+                numeracao=numeracao,
                 nivel=nivel,
-                id_pai=id_pai
+                id_tag_pai=id_pai, # Mapeando para o nome correto do argumento do Model
+                ordem=ordem
             )
-
-            if id_tag:
-                logger.info(f"Tag criada: {nome} (nível {nivel})")
-
-            return id_tag
-
         except Exception as e:
-            logger.error(f"Erro ao criar tag: {e}", exc_info=True)
+            logger.error(f"Erro ao criar tag no repositório: {e}", exc_info=True)
             return None
 
     def buscar_por_id(self, id_tag: int) -> Optional[Dict[str, Any]]:
-        """Busca tag por ID"""
-        try:
-            tag = TagModel.buscar_por_id(id_tag)
-            return tag
+        """Busca tag por ID."""
+        return TagModel.buscar_por_id(id_tag)
 
-        except Exception as e:
-            logger.error(f"Erro ao buscar tag: {e}", exc_info=True)
-            return None
+    def buscar_todas(self, nivel: Optional[int] = None, apenas_ativas: bool = True) -> List[Dict[str, Any]]:
+        """Busca todas as tags, opcionalmente filtrando por nível."""
+        if nivel is not None:
+            # Corrigindo o nome do método chamado
+            return TagModel.listar_por_nivel(nivel, apenas_ativas=apenas_ativas)
+        return TagModel.listar_todas(apenas_ativas=apenas_ativas)
 
-    def buscar_todas(self, nivel: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Busca todas as tags"""
-        try:
-            if nivel is not None:
-                tags = TagModel.buscar_por_nivel(nivel)
-            else:
-                tags = TagModel.listar_todas()
-
-            logger.debug(f"Tags obtidas: {len(tags)}")
-            return tags
-
-        except Exception as e:
-            logger.error(f"Erro ao buscar tags: {e}", exc_info=True)
-            return []
-
-    def buscar_filhas(self, id_tag: int) -> List[Dict[str, Any]]:
-        """Busca tags filhas de uma tag pai"""
-        try:
-            tags = TagModel.buscar_filhas(id_tag)
-            logger.debug(f"Tags filhas: {len(tags)} (pai: {id_tag})")
-            return tags
-
-        except Exception as e:
-            logger.error(f"Erro ao buscar tags filhas: {e}", exc_info=True)
-            return []
+    def buscar_filhas(self, id_tag_pai: int) -> List[Dict[str, Any]]:
+        """Busca tags filhas de uma tag pai."""
+        return TagModel.listar_filhas(id_tag_pai)
 
     def buscar_hierarquia_completa(self) -> List[Dict[str, Any]]:
-        """Busca toda hierarquia de tags"""
+        """
+        Busca toda hierarquia de tags e a constrói como uma árvore.
+        Este método implementa a lógica que estava faltando.
+        """
         try:
-            hierarquia = TagModel.obter_hierarquia_completa()
-            logger.debug("Hierarquia de tags obtida")
-            return hierarquia
+            logger.debug("Construindo hierarquia de tags no repositório...")
+            tags = TagModel.listar_todas(apenas_ativas=True)
+            contagem_questoes = TagModel.contar_questoes_por_tag()
 
+            tags_map = {}
+            for tag in tags:
+                tag['filhos'] = []
+                tag['questoes'] = contagem_questoes.get(tag['id_tag'], 0)
+                tags_map[tag['id_tag']] = tag
+            
+            hierarquia = []
+            for tag in tags:
+                if tag['id_tag_pai']:
+                    if tag['id_tag_pai'] in tags_map:
+                        tags_map[tag['id_tag_pai']]['filhos'].append(tag)
+                else:
+                    hierarquia.append(tag)
+            
+            logger.debug("Hierarquia de tags construída com sucesso.")
+            return hierarquia
         except Exception as e:
-            logger.error(f"Erro ao buscar hierarquia: {e}", exc_info=True)
+            logger.error(f"Erro ao construir hierarquia de tags: {e}", exc_info=True)
             return []
 
-    def atualizar(
-        self,
-        id_tag: int,
-        nome: Optional[str] = None,
-        nivel: Optional[int] = None,
-        id_pai: Optional[int] = None
-    ) -> bool:
-        """Atualiza uma tag"""
+    def atualizar(self, id_tag: int, **kwargs) -> bool:
+        """Atualiza uma tag. O nome do argumento 'id_pai' é mapeado para 'id_tag_pai'."""
         try:
-            kwargs = {}
-
-            if nome is not None:
-                kwargs['nome'] = nome
-
-            if nivel is not None:
-                kwargs['nivel'] = nivel
-
-            if id_pai is not None:
-                kwargs['id_pai'] = id_pai
-
-            sucesso = TagModel.atualizar(id_tag, **kwargs)
-
-            if sucesso:
-                logger.info(f"Tag atualizada: ID {id_tag}")
-
-            return sucesso
-
+            # O model já lida com kwargs, mas mapeamos 'id_pai' se ele vier do controller
+            if 'id_pai' in kwargs:
+                kwargs['id_tag_pai'] = kwargs.pop('id_pai')
+            
+            return TagModel.atualizar(id_tag, **kwargs)
         except Exception as e:
-            logger.error(f"Erro ao atualizar tag: {e}", exc_info=True)
+            logger.error(f"Erro ao atualizar tag no repositório: {e}", exc_info=True)
             return False
 
     def deletar(self, id_tag: int) -> bool:
-        """Deleta uma tag"""
+        """
+        Deleta uma tag usando a lógica de negócio do Model.
+        O Model já verifica se a tag está em uso.
+        """
         try:
-            sucesso = TagModel.deletar(id_tag)
-
-            if sucesso:
-                logger.info(f"Tag deletada: ID {id_tag}")
-
-            return sucesso
-
+            # O model retorna False se a tag estiver em uso e forcar=False
+            return TagModel.deletar(id_tag, forcar=False)
         except Exception as e:
-            logger.error(f"Erro ao deletar tag: {e}", exc_info=True)
+            logger.error(f"Erro ao deletar tag no repositório: {e}", exc_info=True)
             return False
