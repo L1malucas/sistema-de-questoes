@@ -123,34 +123,16 @@ def main():
 
         logger.info("Banco de dados configurado com sucesso")
 
-        # TODO: Importar e criar janela principal
-        # from src.views.main_window import MainWindow
-        # window = MainWindow()
-        # window.show()
+        # Importar e criar janela principal
+        from src.views.main_window import MainWindow
+        window = MainWindow()
+        window.show()
 
-        # TEMPORÁRIO: Exibir mensagem de sucesso
         logger.info("Sistema inicializado com sucesso!")
-        logger.info("Interface gráfica será implementada em breve.")
+        logger.info("Entrando no loop de eventos da aplicação")
 
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Icon.Information)
-        msg.setWindowTitle("Sistema Inicializado")
-        msg.setText(
-            "Sistema de Banco de Questões Educacionais\n\n"
-            "Banco de dados inicializado com sucesso!\n\n"
-            "A interface gráfica está em desenvolvimento.\n"
-            "Por enquanto, você pode testar o banco de dados executando:\n\n"
-            "python src/models/database.py"
-        )
-        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-        msg.exec()
-
-        logger.info("Encerrando aplicação")
-        return 0
-
-        # TODO: Descomentar quando a interface estiver pronta
-        # logger.info("Entrando no loop de eventos da aplicação")
-        # return app.exec()
+        # Entrar no loop de eventos
+        return app.exec()
 
     except Exception as e:
         logger.error(f"Erro crítico na aplicação: {e}", exc_info=True)
