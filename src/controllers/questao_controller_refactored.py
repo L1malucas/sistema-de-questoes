@@ -75,6 +75,9 @@ class QuestaoControllerRefactored:
 
         Returns:
             ID da questão criada ou None em caso de erro
+
+        Raises:
+            ValueError: Se houver erros de validação nos dados de entrada.
         """
         try:
             # 1. Validar dados
@@ -83,7 +86,7 @@ class QuestaoControllerRefactored:
 
             if not validacao.valido:
                 logger.error(f"Validação falhou: {validacao.erros}")
-                return None
+                raise ValueError("Erros de validação encontrados:\n\n- " + "\n- ".join(validacao.erros))
 
             if validacao.avisos:
                 logger.warning(f"Avisos de validação: {validacao.avisos}")
@@ -96,7 +99,8 @@ class QuestaoControllerRefactored:
 
                 if not imagem_path:
                     logger.error("Falha ao processar imagem")
-                    return None
+                    # Lançar exceção que será capturada pelo erro genérico
+                    raise IOError("Falha ao processar a imagem do enunciado.")
 
             # 3. Criar questão no banco
             logger.info("Criando questão no banco de dados")
@@ -114,7 +118,7 @@ class QuestaoControllerRefactored:
 
             if not id_questao:
                 logger.error("Falha ao criar questão no banco")
-                return None
+                raise RuntimeError("Falha ao salvar a questão principal no banco de dados.")
 
             logger.info(f"Questão criada com sucesso: ID {id_questao}")
 
@@ -132,7 +136,7 @@ class QuestaoControllerRefactored:
                     logger.error("Falha ao criar alternativas")
                     # Rollback: inativar questão criada
                     self.questao_repository.inativar(id_questao)
-                    return None
+                    raise RuntimeError("Falha ao salvar as alternativas no banco de dados.")
 
             # 5. Vincular tags
             if dto.tags:
@@ -143,8 +147,13 @@ class QuestaoControllerRefactored:
             logger.info(f"Questão completa criada com sucesso: ID {id_questao}")
             return id_questao
 
+        except ValueError as e:
+            # Re-lança exceções de validação para a camada da View tratar
+            logger.warning(f"Erro de validação ao criar questão: {e}")
+            raise e
         except Exception as e:
-            logger.error(f"Erro ao criar questão completa: {e}", exc_info=True)
+            # Captura outras exceções (IOError, RuntimeError, etc.) e loga como erro grave
+            logger.error(f"Erro inesperado ao criar questão completa: {e}", exc_info=True)
             return None
 
     def atualizar_questao_completa(

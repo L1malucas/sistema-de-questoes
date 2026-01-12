@@ -26,15 +26,18 @@ log_dir = project_root / 'logs'
 log_dir.mkdir(exist_ok=True)
 log_file = log_dir / 'app.log'
 
+# Usar force=True para garantir que a configuração seja aplicada (Python 3.8+)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(log_file, encoding='utf-8'),
         logging.StreamHandler()
-    ]
+    ],
+    force=True  # Garante que a configuração seja re-aplicada se já houver uma.
 )
 logger = logging.getLogger(__name__)
+logger.info(f"Logging configurado para salvar em arquivo: {log_file.resolve()}")
 
 
 def setup_database() -> bool:
