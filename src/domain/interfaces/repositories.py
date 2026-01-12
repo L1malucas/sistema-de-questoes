@@ -24,6 +24,8 @@ class IQuestaoRepository(Protocol):
         fonte: Optional[str],
         id_dificuldade: int,
         resolucao: Optional[str],
+        gabarito_discursiva: Optional[str],
+        observacoes: Optional[str],
         imagem_enunciado: Optional[str],
         escala_imagem_enunciado: Optional[float]
     ) -> Optional[int]:
@@ -37,6 +39,8 @@ class IQuestaoRepository(Protocol):
             fonte: Fonte/origem da questão (opcional)
             id_dificuldade: ID da dificuldade (1=FACIL, 2=MEDIO, 3=DIFICIL)
             resolucao: Resolução comentada (opcional)
+            gabarito_discursiva: Gabarito para questões discursivas (opcional)
+            observacoes: Comentários internos sobre a questão (opcional)
             imagem_enunciado: Caminho da imagem (opcional)
             escala_imagem_enunciado: Escala da imagem 0-1 (opcional)
 
@@ -92,6 +96,8 @@ class IQuestaoRepository(Protocol):
         fonte: Optional[str] = None,
         id_dificuldade: Optional[int] = None,
         resolucao: Optional[str] = None,
+        gabarito_discursiva: Optional[str] = None,
+        observacoes: Optional[str] = None,
         imagem_enunciado: Optional[str] = None,
         escala_imagem_enunciado: Optional[float] = None
     ) -> bool:
@@ -276,6 +282,17 @@ class IAlternativaRepository(Protocol):
         """
         ...
 
+    def deletar_por_questao(self, id_questao: int) -> bool:
+        """Deleta todas as alternativas de uma questão
+
+        Args:
+            id_questao: ID da questão
+
+        Returns:
+            True se a deleção for bem-sucedida, False caso contrário.
+        """
+        ...
+
 
 class ITagRepository(Protocol):
     """Interface para repositório de tags"""
@@ -283,15 +300,19 @@ class ITagRepository(Protocol):
     def criar(
         self,
         nome: str,
+        numeracao: str,
         nivel: int,
-        id_pai: Optional[int] = None
+        id_pai: Optional[int],
+        ordem: int
     ) -> Optional[int]:
         """Cria uma tag
 
         Args:
             nome: Nome da tag
-            nivel: Nível hierárquico (1, 2 ou 3)
+            numeracao: Numeração hierárquica (ex: "2.1")
+            nivel: Nível hierárquico (1, 2, 3)
             id_pai: ID da tag pai (None para nível 1)
+            ordem: Ordem de exibição entre tags do mesmo nível
 
         Returns:
             ID da tag criada ou None em caso de erro
@@ -309,11 +330,12 @@ class ITagRepository(Protocol):
         """
         ...
 
-    def buscar_todas(self, nivel: Optional[int] = None) -> List[Dict[str, Any]]:
+    def buscar_todas(self, nivel: Optional[int] = None, apenas_ativas: bool = True) -> List[Dict[str, Any]]:
         """Busca todas as tags
 
         Args:
             nivel: Filtro opcional por nível (1, 2 ou 3)
+            apenas_ativas: Se True, retorna apenas tags ativas
 
         Returns:
             Lista de dicionários com tags
@@ -344,13 +366,15 @@ class ITagRepository(Protocol):
         id_tag: int,
         nome: Optional[str] = None,
         nivel: Optional[int] = None,
-        id_pai: Optional[int] = None
+        id_pai: Optional[int] = None,
+        ordem: Optional[int] = None,
+        numeracao: Optional[str] = None
     ) -> bool:
         """Atualiza uma tag
 
         Args:
             id_tag: ID da tag
-            **kwargs: Campos a atualizar
+            **kwargs: Campos a atualizar (nome, nivel, id_pai, ordem, numeracao)
 
         Returns:
             True se atualização bem-sucedida, False caso contrário

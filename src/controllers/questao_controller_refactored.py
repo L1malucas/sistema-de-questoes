@@ -112,6 +112,8 @@ class QuestaoControllerRefactored:
                 fonte=dto.fonte,
                 id_dificuldade=dto.id_dificuldade,
                 resolucao=dto.resolucao,
+                gabarito_discursiva=dto.gabarito_discursiva,
+                observacoes=dto.observacoes,
                 imagem_enunciado=imagem_path,
                 escala_imagem_enunciado=dto.escala_imagem_enunciado
             )
@@ -160,90 +162,70 @@ class QuestaoControllerRefactored:
         self,
         dto: QuestaoUpdateDTO
     ) -> bool:
-        """Atualiza questão completa
-
-        Args:
-            dto: DTO com dados a atualizar
-
-        Returns:
-            True se atualização bem-sucedida, False caso contrário
-        """
+        """Atualiza questão completa, incluindo alternativas e tags."""
         try:
             # 1. Verificar se questão existe
             questao_atual = self.questao_repository.buscar_por_id(dto.id_questao)
             if not questao_atual:
-                logger.error(f"Questão não encontrada: ID {dto.id_questao}")
+                logger.error(f"Questão não encontrada para atualização: ID {dto.id_questao}")
                 return False
 
-            # 2. Validar dados (se fornecidos)
+            # 2. Validar dados do DTO
             dados_validacao = dto.to_dict()
-            if len(dados_validacao) > 1:  # Mais que só o ID
+            if len(dados_validacao) > 1:
                 validacao = self.validation_service.validar_questao_completa(dados_validacao)
-
                 if not validacao.valido:
-                    logger.error(f"Validação falhou: {validacao.erros}")
-                    return False
+                    logger.error(f"Validação da atualização falhou: {validacao.erros}")
+                    raise ValueError("Erros de validação encontrados:\n\n- " + "\n- ".join(validacao.erros))
 
-            # 3. Processar imagem (se fornecida)
-            imagem_path = dto.imagem_enunciado
-            if imagem_path:
-                logger.info(f"Processando nova imagem: {imagem_path}")
-                imagem_path = self.image_service.processar_imagem_questao(
-                    imagem_path,
-                    id_questao=dto.id_questao
+            # 3. Processar imagem (se houver)
+            if dto.imagem_enunciado:
+                logger.info(f"Processando nova imagem para questão ID {dto.id_questao}")
+                dto.imagem_enunciado = self.image_service.processar_imagem_questao(
+                    dto.imagem_enunciado, id_questao=dto.id_questao
                 )
+                if not dto.imagem_enunciado:
+                    raise IOError("Falha ao processar a imagem do enunciado durante a atualização.")
 
-                if not imagem_path:
-                    logger.error("Falha ao processar imagem")
-                    return False
+            # 4. Atualizar dados principais da questão
+            logger.info(f"Atualizando dados principais da questão ID {dto.id_questao}")
+            if not self.questao_repository.atualizar(id_questao=dto.id_questao, **dto.to_dict(exclude={'id_questao', 'alternativas', 'tags'})):
+                raise RuntimeError("Falha ao atualizar os dados principais da questão no banco de dados.")
 
-            # 4. Atualizar questão
-            logger.info(f"Atualizando questão: ID {dto.id_questao}")
-            sucesso = self.questao_repository.atualizar(
-                id_questao=dto.id_questao,
-                titulo=dto.titulo,
-                enunciado=dto.enunciado,
-                tipo=dto.tipo,
-                ano=dto.ano,
-                fonte=dto.fonte,
-                id_dificuldade=dto.id_dificuldade,
-                resolucao=dto.resolucao,
-                imagem_enunciado=imagem_path,
-                escala_imagem_enunciado=dto.escala_imagem_enunciado
-            )
-
-            if not sucesso:
-                logger.error("Falha ao atualizar questão")
-                return False
-
-            # 5. Atualizar alternativas (se fornecidas)
+            # 5. Atualizar alternativas (deletar e recriar)
             if dto.alternativas is not None:
-                logger.info("Atualizando alternativas")
-                # TODO: Implementar lógica de atualização de alternativas
-                # Por ora, isso requer deletar e recriar
-                pass
+                logger.info(f"Atualizando alternativas para questão ID {dto.id_questao}")
+                if not self.alternativa_repository.deletar_por_questao(dto.id_questao):
+                    raise RuntimeError("Falha ao deletar alternativas antigas.")
+                
+                if dto.tipo == 'OBJETIVA' and dto.alternativas:
+                    alternativas_dados = [alt.to_dict() for alt in dto.alternativas]
+                    if not self.alternativa_repository.criar_conjunto_completo(dto.id_questao, alternativas_dados):
+                        raise RuntimeError("Falha ao criar o novo conjunto de alternativas.")
 
-            # 6. Atualizar tags (se fornecidas)
+            # 6. Sincronizar tags
             if dto.tags is not None:
-                logger.info("Atualizando tags")
-                # Obter tags atuais
+                logger.info(f"Sincronizando tags para questão ID {dto.id_questao}")
                 tags_atuais = self.questao_repository.obter_tags(dto.id_questao)
-                ids_atuais = {tag['id'] for tag in tags_atuais}
+                ids_atuais = {tag['id_tag'] for tag in tags_atuais}
                 ids_novos = set(dto.tags)
 
-                # Remover tags que não estão mais
+                # Desvincular tags removidas
                 for id_tag in ids_atuais - ids_novos:
                     self.questao_repository.desvincular_tag(dto.id_questao, id_tag)
 
-                # Adicionar novas tags
+                # Vincular novas tags
                 for id_tag in ids_novos - ids_atuais:
                     self.questao_repository.vincular_tag(dto.id_questao, id_tag)
 
-            logger.info(f"Questão atualizada com sucesso: ID {dto.id_questao}")
+            logger.info(f"Questão ID {dto.id_questao} atualizada com sucesso.")
             return True
 
+        except (ValueError, RuntimeError, IOError) as e:
+            logger.error(f"Erro ao atualizar questão ID {dto.id_questao}: {e}")
+            raise e
         except Exception as e:
-            logger.error(f"Erro ao atualizar questão: {e}", exc_info=True)
+            logger.error(f"Erro inesperado ao atualizar questão ID {dto.id_questao}: {e}", exc_info=True)
             return False
 
     def buscar_questoes(

@@ -30,6 +30,8 @@ class QuestaoRepositoryImpl(IQuestaoRepository):
         fonte: Optional[str],
         id_dificuldade: int,
         resolucao: Optional[str],
+        gabarito_discursiva: Optional[str],
+        observacoes: Optional[str],
         imagem_enunciado: Optional[str],
         escala_imagem_enunciado: Optional[float]
     ) -> Optional[int]:
@@ -54,6 +56,12 @@ class QuestaoRepositoryImpl(IQuestaoRepository):
 
             if resolucao is not None:
                 kwargs['resolucao'] = resolucao
+            
+            if gabarito_discursiva is not None:
+                kwargs['gabarito_discursiva'] = gabarito_discursiva
+
+            if observacoes is not None:
+                kwargs['observacoes'] = observacoes
 
             if imagem_enunciado is not None:
                 kwargs['imagem_enunciado'] = imagem_enunciado
@@ -161,6 +169,8 @@ class QuestaoRepositoryImpl(IQuestaoRepository):
         fonte: Optional[str] = None,
         id_dificuldade: Optional[int] = None,
         resolucao: Optional[str] = None,
+        gabarito_discursiva: Optional[str] = None,
+        observacoes: Optional[str] = None,
         imagem_enunciado: Optional[str] = None,
         escala_imagem_enunciado: Optional[float] = None
     ) -> bool:
@@ -171,28 +181,24 @@ class QuestaoRepositoryImpl(IQuestaoRepository):
             # Adicionar apenas campos fornecidos
             if titulo is not None:
                 kwargs['titulo'] = titulo
-
             if enunciado is not None:
                 kwargs['enunciado'] = enunciado
-
             if tipo is not None:
                 kwargs['tipo'] = tipo
-
             if ano is not None:
                 kwargs['ano'] = ano
-
             if fonte is not None:
                 kwargs['fonte'] = fonte
-
             if id_dificuldade is not None:
                 kwargs['id_dificuldade'] = id_dificuldade
-
             if resolucao is not None:
                 kwargs['resolucao'] = resolucao
-
+            if gabarito_discursiva is not None:
+                kwargs['gabarito_discursiva'] = gabarito_discursiva
+            if observacoes is not None:
+                kwargs['observacoes'] = observacoes
             if imagem_enunciado is not None:
                 kwargs['imagem_enunciado'] = imagem_enunciado
-
             if escala_imagem_enunciado is not None:
                 kwargs['escala_imagem_enunciado'] = escala_imagem_enunciado
 

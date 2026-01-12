@@ -50,6 +50,8 @@ class QuestaoCreateDTO:
     ano: Optional[int] = None
     fonte: Optional[str] = None
     resolucao: Optional[str] = None
+    gabarito_discursiva: Optional[str] = None
+    observacoes: Optional[str] = None
     imagem_enunciado: Optional[str] = None
     escala_imagem_enunciado: Optional[float] = None
     alternativas: List[AlternativaDTO] = field(default_factory=list)
@@ -65,6 +67,8 @@ class QuestaoCreateDTO:
             'fonte': self.fonte,
             'id_dificuldade': self.id_dificuldade,
             'resolucao': self.resolucao,
+            'gabarito_discursiva': self.gabarito_discursiva,
+            'observacoes': self.observacoes,
             'imagem_enunciado': self.imagem_enunciado,
             'escala_imagem_enunciado': self.escala_imagem_enunciado,
             'alternativas': [alt.to_dict() for alt in self.alternativas],
@@ -87,6 +91,8 @@ class QuestaoCreateDTO:
             fonte=data.get('fonte'),
             id_dificuldade=data['id_dificuldade'],
             resolucao=data.get('resolucao'),
+            gabarito_discursiva=data.get('gabarito_discursiva'),
+            observacoes=data.get('observacoes'),
             imagem_enunciado=data.get('imagem_enunciado'),
             escala_imagem_enunciado=data.get('escala_imagem_enunciado'),
             alternativas=alternativas,
@@ -106,48 +112,37 @@ class QuestaoUpdateDTO:
     fonte: Optional[str] = None
     id_dificuldade: Optional[int] = None
     resolucao: Optional[str] = None
+    gabarito_discursiva: Optional[str] = None
+    observacoes: Optional[str] = None
     imagem_enunciado: Optional[str] = None
     escala_imagem_enunciado: Optional[float] = None
     alternativas: Optional[List[AlternativaDTO]] = None
     tags: Optional[List[int]] = None
 
-    def to_dict(self) -> dict:
-        """Converte para dicionário (apenas campos não-None)"""
-        dados = {'id_questao': self.id_questao}
+    def to_dict(self, exclude: set = None) -> dict:
+        """
+        Converte para dicionário, opcionalmente excluindo chaves.
+        Útil para separar dados que são atualizados em tabelas diferentes.
+        """
+        if exclude is None:
+            exclude = set()
 
-        if self.titulo is not None:
-            dados['titulo'] = self.titulo
-
-        if self.enunciado is not None:
-            dados['enunciado'] = self.enunciado
-
-        if self.tipo is not None:
-            dados['tipo'] = self.tipo
-
-        if self.ano is not None:
-            dados['ano'] = self.ano
-
-        if self.fonte is not None:
-            dados['fonte'] = self.fonte
-
-        if self.id_dificuldade is not None:
-            dados['id_dificuldade'] = self.id_dificuldade
-
-        if self.resolucao is not None:
-            dados['resolucao'] = self.resolucao
-
-        if self.imagem_enunciado is not None:
-            dados['imagem_enunciado'] = self.imagem_enunciado
-
-        if self.escala_imagem_enunciado is not None:
-            dados['escala_imagem_enunciado'] = self.escala_imagem_enunciado
-
-        if self.alternativas is not None:
-            dados['alternativas'] = [alt.to_dict() for alt in self.alternativas]
-
-        if self.tags is not None:
-            dados['tags'] = self.tags
-
+        dados = {}
+        # Itera sobre os campos do dataclass para construir o dicionário
+        for f in field(self):
+            # Pula os campos que devem ser excluídos
+            if f.name in exclude:
+                continue
+            
+            valor = getattr(self, f.name)
+            
+            # Inclui apenas os valores que não são None
+            if valor is not None:
+                # Converte listas de DTOs aninhados para listas de dicionários
+                if f.name == 'alternativas' and isinstance(valor, list):
+                    dados[f.name] = [alt.to_dict() for alt in valor]
+                else:
+                    dados[f.name] = valor
         return dados
 
 
