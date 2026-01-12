@@ -5,22 +5,22 @@
 # ============================================
 
 # Framework GUI
-PyQt6==6.6.1
-PyQt6-Qt6==6.6.1
-PyQt6-sip==13.6.0
+PyQt6>=6.6.1
+PyQt6-Qt6>=6.6.1
+PyQt6-sip>=13.6.0
 
 # Renderização LaTeX
-matplotlib==3.8.2
-numpy==1.26.3
+matplotlib>=3.8.2
+numpy>=1.26.3
 
 # Processamento de Imagens
-Pillow==10.2.0
+Pillow>=10.4.0  # Updated for Python 3.14 compatibility
 
 # Manipulação de Datas
-python-dateutil==2.8.2
+python-dateutil>=2.8.2
 
-# Geração de LaTeX (opcional)
-pylatex==1.4.2
+# Geração de LaTeX
+pylatex>=1.4.2
 
 # Configuração
 configparser==6.0.0
