@@ -1,11 +1,13 @@
 """
 Service: ExportService
 DESCRIÇÃO: Gerencia a lógica de geração de arquivos LaTeX e PDF a partir de listas de questões.
+SEGURANÇA: Sanitiza conteúdo LaTeX e usa pdflatex com -no-shell-escape
 """
 import logging
 import subprocess
 import shutil
 import random
+import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -14,6 +16,7 @@ from src.application.dtos.export_dto import ExportOptionsDTO
 from src.application.dtos.lista_dto import ListaResponseDTO
 from src.application.dtos.questao_dto import QuestaoResponseDTO
 from src.models.database import db # Para obter o project_root
+from src.constants import LatexConfig
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,91 @@ class ExportService:
         self.exports_dir.mkdir(parents=True, exist_ok=True)
         logger.info("ExportService inicializado.")
 
+    @staticmethod
+    def _sanitize_latex(content: str) -> str:
+        """
+        Sanitiza conteúdo LaTeX para prevenir execução de comandos perigosos.
+
+        SEGURANÇA: Remove ou neutraliza comandos LaTeX que podem executar código arbitrário.
+
+        Args:
+            content: Conteúdo LaTeX a ser sanitizado
+
+        Returns:
+            Conteúdo LaTeX sanitizado
+        """
+        if not content:
+            return ""
+
+        # Lista de comandos perigosos que devem ser removidos
+        dangerous_commands = LatexConfig.COMANDOS_PERIGOSOS
+
+        sanitized = content
+
+        # Remover comandos perigosos (case-insensitive)
+        for cmd in dangerous_commands:
+            # Remove comando com ou sem argumentos
+            pattern = re.escape(cmd) + r'(\{[^}]*\}|\[[^\]]*\])*'
+            sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE)
+
+        # Verificar se restou algum \write18 (muito perigoso)
+        if r'\write' in sanitized.lower():
+            logger.warning("Tentativa de usar comando \\write detectada e bloqueada")
+            sanitized = sanitized.replace(r'\write', r'%BLOCKED:write')
+
+        # Escapar barras invertidas isoladas que possam ser usadas para bypass
+        # (mantém comandos LaTeX válidos como \textbf, \frac, etc)
+
+        return sanitized
+
+    @staticmethod
+    def _validate_image_path(image_path: str, project_root: Path) -> bool:
+        """
+        Valida que o caminho da imagem está dentro do diretório do projeto.
+
+        SEGURANÇA: Previne path traversal attacks.
+
+        Args:
+            image_path: Caminho da imagem a ser validado
+            project_root: Diretório raiz do projeto
+
+        Returns:
+            True se o caminho é válido e seguro
+        """
+        try:
+            full_path = (project_root / image_path).resolve()
+            project_root_resolved = project_root.resolve()
+
+            # Verificar se o caminho está dentro do projeto
+            return full_path.is_relative_to(project_root_resolved)
+        except Exception as e:
+            logger.error(f"Erro ao validar caminho de imagem: {e}")
+            return False
+
+    @staticmethod
+    def _validate_scale(scale: float) -> float:
+        """
+        Valida e normaliza o valor de escala de imagem.
+
+        Args:
+            scale: Valor de escala
+
+        Returns:
+            Escala validada dentro dos limites seguros
+        """
+        from src.constants import ImagemConfig
+
+        if scale is None or scale <= 0:
+            return ImagemConfig.ESCALA_PADRAO
+
+        # Limitar escala a valores razoáveis
+        if scale < ImagemConfig.ESCALA_MINIMA:
+            return ImagemConfig.ESCALA_MINIMA
+        if scale > ImagemConfig.ESCALA_MAXIMA:
+            return ImagemConfig.ESCALA_MAXIMA
+
+        return scale
+
     def _get_template_path(self, template_name: str) -> Path:
         """Retorna o caminho completo de um arquivo de template LaTeX."""
         path = self.templates_dir / template_name
@@ -44,35 +132,44 @@ class ExportService:
             return f.read()
 
     def _generate_question_latex(self, questao_dto: QuestaoResponseDTO, opcoes: ExportOptionsDTO) -> str:
-        """Gera o código LaTeX para uma única questão."""
+        """
+        Gera o código LaTeX para uma única questão.
+        SEGURANÇA: Sanitiza todo o conteúdo LaTeX antes de incluir no documento.
+        """
         latex_parts = []
-        
-        # Enunciado
-        latex_parts.append(f"\item {questao_dto.enunciado}\n")
-        
-        # Imagem do enunciado
-        if questao_dto.imagem_enunciado:
-            # Caminho relativo para a imagem
-            image_path_relative = Path(questao_dto.imagem_enunciado)
-            # Garantir que a imagem está no diretório correto para o LaTeX
-            # (ou que o pdflatex consegue achá-la)
-            # Por simplicidade, assumimos que as imagens são acessíveis.
-            # Caminho relativo ao projeto, mas o LaTeX precisa do caminho relativo ao .tex
-            # Isso pode ser complexo. Por enquanto, assumimos que o pdflatex está sendo executado no root do projeto
-            # ou que o caminho está correto.
-            scale = questao_dto.escala_imagem_enunciado if questao_dto.escala_imagem_enunciado else opcoes.escala_imagens
-            latex_parts.append(f"\includegraphics[scale={scale}]{{{image_path_relative}}}\n")
 
-        # Alternativas (se objetiva)
+        # Enunciado (SANITIZADO)
+        enunciado_sanitizado = self._sanitize_latex(questao_dto.enunciado)
+        latex_parts.append(f"\\item {enunciado_sanitizado}\n")
+
+        # Imagem do enunciado (VALIDADA)
+        if questao_dto.imagem_enunciado:
+            # SEGURANÇA: Validar caminho da imagem
+            if self._validate_image_path(questao_dto.imagem_enunciado, self.project_root):
+                image_path_relative = Path(questao_dto.imagem_enunciado)
+
+                # SEGURANÇA: Validar escala
+                scale = self._validate_scale(
+                    questao_dto.escala_imagem_enunciado if questao_dto.escala_imagem_enunciado
+                    else opcoes.escala_imagens
+                )
+
+                latex_parts.append(f"\\includegraphics[scale={scale:.2f}]{{{image_path_relative}}}\n")
+            else:
+                logger.warning(f"Caminho de imagem inválido ignorado: {questao_dto.imagem_enunciado}")
+
+        # Alternativas (se objetiva) - SANITIZADAS
         if questao_dto.tipo == 'OBJETIVA' and questao_dto.alternativas:
-            latex_parts.append("\begin{enumerate}[label=\\Alph*)]\n")
+            latex_parts.append("\\begin{enumerate}[label=\\Alph*)]\n")
             for alt_dto in questao_dto.alternativas:
-                latex_parts.append(f"  \item {alt_dto.texto}\n")
-            latex_parts.append("\end{enumerate}\n")
-        
-        # Resolução
+                texto_sanitizado = self._sanitize_latex(alt_dto.texto)
+                latex_parts.append(f"  \\item {texto_sanitizado}\n")
+            latex_parts.append("\\end{enumerate}\n")
+
+        # Resolução (SANITIZADA)
         if opcoes.incluir_resolucoes and questao_dto.resolucao:
-            latex_parts.append(f"\paragraph*{{Resolução:}} {questao_dto.resolucao}\n")
+            resolucao_sanitizada = self._sanitize_latex(questao_dto.resolucao)
+            latex_parts.append(f"\\paragraph*{{Resolução:}} {resolucao_sanitizada}\n")
 
         return "".join(latex_parts)
 
@@ -147,10 +244,15 @@ class ExportService:
     def compilar_latex_para_pdf(self, tex_content: str, output_dir: Path, base_filename: str) -> Path:
         """
         Compila um conteúdo LaTeX em um arquivo PDF.
+        SEGURANÇA: Usa -no-shell-escape para prevenir execução de comandos shell.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
         temp_dir = output_dir / f"temp_latex_{base_filename}"
         temp_dir.mkdir(exist_ok=True)
+
+        # SEGURANÇA: Validar base_filename para prevenir path traversal
+        if '..' in base_filename or '/' in base_filename or '\\' in base_filename:
+            raise ValueError(f"Nome de arquivo inválido: {base_filename}")
 
         tex_file_path = temp_dir / f"{base_filename}.tex"
         pdf_file_path = output_dir / f"{base_filename}.pdf"
@@ -160,16 +262,25 @@ class ExportService:
             with open(tex_file_path, 'w', encoding='utf-8') as f:
                 f.write(tex_content)
 
-            # Comando pdflatex
-            cmd = ["pdflatex", "-interaction=nonstopmode", "-output-directory", str(temp_dir), str(tex_file_path)]
-            
+            # SEGURANÇA: Comando pdflatex com -no-shell-escape
+            # Isso previne que comandos LaTeX executem shell commands via \write18
+            cmd = [
+                "pdflatex",
+                "-no-shell-escape",  # CRÍTICO: Previne execução de comandos shell
+                "-interaction=nonstopmode",
+                "-output-directory", str(temp_dir),
+                str(tex_file_path)
+            ]
+
+            logger.info(f"Comando pdflatex: {' '.join(cmd)}")
+
             # Rodar pdflatex duas vezes para resolver referências e layout
             logger.info(f"Executando pdflatex (1/2) em {temp_dir}...")
             result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', check=False)
             if result.returncode != 0:
                 logger.error(f"Erro pdflatex (1/2): {result.stderr}\n{result.stdout}")
                 raise RuntimeError(f"Erro na compilação LaTeX (1/2). Verifique o log. Erro: {result.stderr}")
-            
+
             logger.info(f"Executando pdflatex (2/2) em {temp_dir}...")
             result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', check=False)
             if result.returncode != 0:

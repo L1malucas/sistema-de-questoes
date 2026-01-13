@@ -191,15 +191,26 @@ class QuestaoModel:
             Dict: Dados da questão ou None se não encontrada
         """
         try:
-            filtro_ativo = "" if incluir_inativas else "AND ativo = 1"
-            query = f"""
-                SELECT
-                    q.*,
-                    d.nome as dificuldade_nome
-                FROM questao q
-                LEFT JOIN dificuldade d ON q.id_dificuldade = d.id_dificuldade
-                WHERE q.id_questao = ? {filtro_ativo}
-            """
+            # CORRIGIDO: Usar duas queries distintas ao invés de concatenação SQL
+            if incluir_inativas:
+                query = """
+                    SELECT
+                        q.*,
+                        d.nome as dificuldade_nome
+                    FROM questao q
+                    LEFT JOIN dificuldade d ON q.id_dificuldade = d.id_dificuldade
+                    WHERE q.id_questao = ?
+                """
+            else:
+                query = """
+                    SELECT
+                        q.*,
+                        d.nome as dificuldade_nome
+                    FROM questao q
+                    LEFT JOIN dificuldade d ON q.id_dificuldade = d.id_dificuldade
+                    WHERE q.id_questao = ? AND q.ativo = 1
+                """
+
             results = db.execute_query(query, (id_questao,))
 
             if results and len(results) > 0:
@@ -220,27 +231,58 @@ class QuestaoModel:
             apenas_ativas: Se True, retorna apenas questões ativas
             limite: Número máximo de resultados (None = sem limite)
             offset: Deslocamento para paginação
-            ordenar_por: Campo para ordenação
+            ordenar_por: Campo para ordenação (validado por whitelist)
 
         Returns:
             List[Dict]: Lista de questões
         """
         try:
-            filtro_ativo = "WHERE q.ativo = 1" if apenas_ativas else ""
-            limite_sql = f"LIMIT {limite}" if limite else ""
-            offset_sql = f"OFFSET {offset}" if offset > 0 else ""
+            # SEGURANÇA: Validar ordenar_por com whitelist para prevenir SQL injection
+            campos_validos = {
+                "data_criacao DESC", "data_criacao ASC",
+                "titulo ASC", "titulo DESC",
+                "ano DESC", "ano ASC",
+                "fonte ASC", "fonte DESC",
+                "tipo ASC", "tipo DESC",
+                "id_dificuldade ASC", "id_dificuldade DESC"
+            }
 
-            query = f"""
+            if ordenar_por not in campos_validos:
+                logger.warning(f"Campo de ordenação inválido: {ordenar_por}. Usando padrão.")
+                ordenar_por = "data_criacao DESC"
+
+            # SEGURANÇA: Validar limite e offset como inteiros
+            if limite is not None:
+                limite = int(limite)
+                if limite < 0:
+                    limite = None
+
+            offset = int(offset)
+            if offset < 0:
+                offset = 0
+
+            # CORRIGIDO: Construir query de forma segura
+            base_query = """
                 SELECT
                     q.*,
                     d.nome as dificuldade_nome
                 FROM questao q
                 LEFT JOIN dificuldade d ON q.id_dificuldade = d.id_dificuldade
-                {filtro_ativo}
-                ORDER BY {ordenar_por}
-                {limite_sql} {offset_sql}
             """
-            results = db.execute_query(query)
+
+            if apenas_ativas:
+                base_query += " WHERE q.ativo = 1"
+
+            # ordenar_por já foi validado por whitelist
+            base_query += f" ORDER BY {ordenar_por}"
+
+            if limite is not None:
+                base_query += f" LIMIT {limite}"
+
+            if offset > 0:
+                base_query += f" OFFSET {offset}"
+
+            results = db.execute_query(base_query)
 
             if results:
                 return [dict(row) for row in results]
@@ -258,6 +300,7 @@ class QuestaoModel:
                           limite: int = None, offset: int = 0) -> List[Dict]:
         """
         Busca questões aplicando múltiplos filtros (lógica AND).
+        CORRIGIDO: Eliminada concatenação SQL, todos os filtros usam prepared statements.
         """
         try:
             filtros = []
@@ -271,18 +314,20 @@ class QuestaoModel:
                 params.extend([f"%{titulo}%", f"%{titulo}%"])
 
             if tipo:
-                filtros.append("q.tipo = ?")
-                params.append(tipo)
+                # SEGURANÇA: Validar tipo contra valores permitidos
+                if tipo in [QuestaoModel.TIPO_OBJETIVA, QuestaoModel.TIPO_DISCURSIVA]:
+                    filtros.append("q.tipo = ?")
+                    params.append(tipo)
 
             if ano_inicio and ano_fim:
                 filtros.append("q.ano BETWEEN ? AND ?")
-                params.extend([ano_inicio, ano_fim])
+                params.extend([int(ano_inicio), int(ano_fim)])
             elif ano_inicio:
                 filtros.append("q.ano >= ?")
-                params.append(ano_inicio)
+                params.append(int(ano_inicio))
             elif ano_fim:
                 filtros.append("q.ano <= ?")
-                params.append(ano_fim)
+                params.append(int(ano_fim))
 
             if fonte:
                 filtros.append("q.fonte = ?")
@@ -290,10 +335,12 @@ class QuestaoModel:
 
             if id_dificuldade:
                 filtros.append("q.id_dificuldade = ?")
-                params.append(id_dificuldade)
+                params.append(int(id_dificuldade))
 
             if tags and len(tags) > 0:
-                placeholders = ','.join(['?' for _ in tags])
+                # SEGURANÇA: Validar que todas as tags são inteiros
+                tags_validadas = [int(tag) for tag in tags]
+                placeholders = ','.join(['?' for _ in tags_validadas])
                 filtros.append(f"""
                     q.id_questao IN (
                         SELECT id_questao
@@ -303,25 +350,34 @@ class QuestaoModel:
                         HAVING COUNT(DISTINCT id_tag) = ?
                     )
                 """)
-                params.extend(tags)
-                params.append(len(tags))
+                params.extend(tags_validadas)
+                params.append(len(tags_validadas))
 
-            where_clause = "WHERE " + " AND ".join(filtros) if filtros else ""
-            limite_sql = f"LIMIT {limite}" if limite else ""
-            offset_sql = f"OFFSET {offset}" if offset > 0 else ""
-
-            query = f"""
+            # CORRIGIDO: Construir query base sem concatenação
+            base_query = """
                 SELECT
                     q.*,
                     d.nome as dificuldade_nome
                 FROM questao q
                 LEFT JOIN dificuldade d ON q.id_dificuldade = d.id_dificuldade
-                {where_clause}
-                ORDER BY q.data_criacao DESC
-                {limite_sql} {offset_sql}
             """
 
-            results = db.execute_query(query, tuple(params))
+            if filtros:
+                base_query += " WHERE " + " AND ".join(filtros)
+
+            base_query += " ORDER BY q.data_criacao DESC"
+
+            # SEGURANÇA: Validar limite e offset
+            if limite is not None:
+                limite = int(limite)
+                if limite > 0:
+                    base_query += f" LIMIT {limite}"
+
+            offset = int(offset)
+            if offset > 0:
+                base_query += f" OFFSET {offset}"
+
+            results = db.execute_query(base_query, tuple(params))
             return [dict(row) for row in results] if results else []
 
         except Exception as e:

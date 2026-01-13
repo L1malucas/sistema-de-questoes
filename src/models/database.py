@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Optional
 import logging
 
+from src.utils.config_reader import config_reader
+from src.constants import DatabaseConfig
+
 # Configuração de logging
 logging.basicConfig(
     level=logging.INFO,
@@ -58,21 +61,33 @@ class Database:
     def get_db_path(self) -> Path:
         """
         Retorna o caminho completo para o arquivo do banco de dados.
+        ATUALIZADO: Lê caminho do config.ini
 
         Returns:
             Path: Caminho absoluto para questoes.db
         """
         if self.db_path is None:
-            root = self.get_project_root()
-            db_dir = root / 'database'
-            db_dir.mkdir(exist_ok=True)
-            self.db_path = db_dir / 'questoes.db'
+            # Tentar ler do config.ini
+            db_path_from_config = config_reader.get_path('DATABASE', 'db_path')
+
+            if db_path_from_config:
+                self.db_path = db_path_from_config
+                # Garantir que o diretório existe
+                self.db_path.parent.mkdir(parents=True, exist_ok=True)
+            else:
+                # Fallback para comportamento anterior
+                root = self.get_project_root()
+                db_dir = root / 'database'
+                db_dir.mkdir(exist_ok=True)
+                self.db_path = db_dir / 'questoes.db'
+
         return self.db_path
 
     def connect(self) -> sqlite3.Connection:
         """
         Estabelece conexão com o banco de dados.
         Se o banco não existir, será criado.
+        ATUALIZADO: Usa configurações do config.ini
 
         Returns:
             sqlite3.Connection: Objeto de conexão com o banco
@@ -85,15 +100,20 @@ class Database:
                 db_path = self.get_db_path()
                 db_exists = db_path.exists()
 
+                # ATUALIZADO: Ler configurações do config.ini
+                timeout = config_reader.get_float('DATABASE', 'timeout', DatabaseConfig.TIMEOUT_SECONDS)
+                foreign_keys = config_reader.get_bool('DATABASE', 'foreign_keys', DatabaseConfig.FOREIGN_KEYS_ENABLED)
+
                 # Configurações da conexão
                 self._connection = sqlite3.connect(
                     str(db_path),
-                    check_same_thread=False,
-                    timeout=10.0
+                    check_same_thread=DatabaseConfig.CHECK_SAME_THREAD,
+                    timeout=timeout
                 )
 
-                # Habilitar foreign keys
-                self._connection.execute("PRAGMA foreign_keys = ON")
+                # Habilitar foreign keys (se configurado)
+                if foreign_keys:
+                    self._connection.execute("PRAGMA foreign_keys = ON")
 
                 # Configurar row factory para retornar dicionários
                 self._connection.row_factory = sqlite3.Row
