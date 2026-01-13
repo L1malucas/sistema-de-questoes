@@ -69,6 +69,7 @@ EXEMPLO DE USO:
 import logging
 from typing import Optional, List, Dict
 from src.models.database import db
+from src.models.queries import ListaQueries, ListaQuestaoQueries
 
 logger = logging.getLogger(__name__)
 
@@ -99,10 +100,8 @@ class ListaModel:
                 logger.error("Título não pode ser vazio")
                 return None
 
-            query = """
-                INSERT INTO lista (titulo, tipo, cabecalho, instrucoes)
-                VALUES (?, ?, ?, ?)
-            """
+            # ATUALIZADO: Usar query centralizada
+            query = ListaQueries.INSERT
 
             params = (titulo, tipo, cabecalho, instrucoes)
 
@@ -128,15 +127,8 @@ class ListaModel:
             Dict: Dados da lista ou None se não encontrada
         """
         try:
-            query = """
-                SELECT
-                    l.*,
-                    COUNT(lq.id_questao) as total_questoes
-                FROM lista l
-                LEFT JOIN lista_questao lq ON l.id_lista = lq.id_lista
-                WHERE l.id_lista = ?
-                GROUP BY l.id_lista
-            """
+            # ATUALIZADO: Usar query centralizada
+            query = ListaQueries.SELECT_BY_ID
             results = db.execute_query(query, (id_lista,))
 
             if results and len(results) > 0:

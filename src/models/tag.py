@@ -66,6 +66,7 @@ EXEMPLO DE USO:
 import logging
 from typing import Optional, List, Dict
 from src.models.database import db
+from src.models.queries import CommonQueries
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ class TagModel:
     def listar_todas(apenas_ativas: bool = True, ordenar_por: str = "ordem") -> List[Dict]:
         """
         Lista todas as tags.
+        CORRIGIDO: Whitelist de ordenação para prevenir SQL injection
 
         Args:
             apenas_ativas: Se True, retorna apenas tags ativas
@@ -89,13 +91,24 @@ class TagModel:
             List[Dict]: Lista de dicionários com dados das tags
         """
         try:
-            filtro_ativo = "WHERE ativo = 1" if apenas_ativas else ""
-            query = f"""
-                SELECT id_tag, nome, numeracao, nivel, id_tag_pai, ativo, ordem
-                FROM tag
-                {filtro_ativo}
-                ORDER BY {ordenar_por}
-            """
+            # SEGURANÇA: Validar ordenação com whitelist
+            if ordenar_por not in CommonQueries.VALID_ORDER_BY_TAG:
+                logger.warning(f"Campo de ordenação inválido: {ordenar_por}. Usando padrão.")
+                ordenar_por = "ordem ASC"
+
+            # CORRIGIDO: Usar queries distintas ao invés de concatenação
+            if apenas_ativas:
+                query = """
+                    SELECT id_tag, nome, numeracao, nivel, id_tag_pai, ativo, ordem
+                    FROM tag
+                    WHERE ativo = 1
+                    ORDER BY """ + ordenar_por
+            else:
+                query = """
+                    SELECT id_tag, nome, numeracao, nivel, id_tag_pai, ativo, ordem
+                    FROM tag
+                    ORDER BY """ + ordenar_por
+
             results = db.execute_query(query)
 
             if results:
@@ -110,6 +123,7 @@ class TagModel:
     def listar_por_nivel(nivel: int, apenas_ativas: bool = True) -> List[Dict]:
         """
         Lista tags de um nível específico da hierarquia.
+        CORRIGIDO: Queries distintas ao invés de concatenação
 
         Args:
             nivel: Nível hierárquico (1=raiz, 2=filho, 3=neto, etc.)
@@ -119,13 +133,25 @@ class TagModel:
             List[Dict]: Lista de tags do nível especificado
         """
         try:
-            filtro_ativo = "AND ativo = 1" if apenas_ativas else ""
-            query = f"""
-                SELECT id_tag, nome, numeracao, nivel, id_tag_pai, ativo, ordem
-                FROM tag
-                WHERE nivel = ? {filtro_ativo}
-                ORDER BY ordem
-            """
+            # SEGURANÇA: Validar nivel como inteiro
+            nivel = int(nivel)
+
+            # CORRIGIDO: Usar queries distintas
+            if apenas_ativas:
+                query = """
+                    SELECT id_tag, nome, numeracao, nivel, id_tag_pai, ativo, ordem
+                    FROM tag
+                    WHERE nivel = ? AND ativo = 1
+                    ORDER BY ordem
+                """
+            else:
+                query = """
+                    SELECT id_tag, nome, numeracao, nivel, id_tag_pai, ativo, ordem
+                    FROM tag
+                    WHERE nivel = ?
+                    ORDER BY ordem
+                """
+
             results = db.execute_query(query, (nivel,))
 
             if results:
@@ -140,6 +166,7 @@ class TagModel:
     def listar_filhas(id_tag_pai: int, apenas_ativas: bool = True) -> List[Dict]:
         """
         Lista todas as tags filhas de uma tag pai.
+        CORRIGIDO: Queries distintas ao invés de concatenação
 
         Args:
             id_tag_pai: ID da tag pai
@@ -149,13 +176,25 @@ class TagModel:
             List[Dict]: Lista de tags filhas
         """
         try:
-            filtro_ativo = "AND ativo = 1" if apenas_ativas else ""
-            query = f"""
-                SELECT id_tag, nome, numeracao, nivel, id_tag_pai, ativo, ordem
-                FROM tag
-                WHERE id_tag_pai = ? {filtro_ativo}
-                ORDER BY ordem
-            """
+            # SEGURANÇA: Validar id_tag_pai como inteiro
+            id_tag_pai = int(id_tag_pai)
+
+            # CORRIGIDO: Usar queries distintas
+            if apenas_ativas:
+                query = """
+                    SELECT id_tag, nome, numeracao, nivel, id_tag_pai, ativo, ordem
+                    FROM tag
+                    WHERE id_tag_pai = ? AND ativo = 1
+                    ORDER BY ordem
+                """
+            else:
+                query = """
+                    SELECT id_tag, nome, numeracao, nivel, id_tag_pai, ativo, ordem
+                    FROM tag
+                    WHERE id_tag_pai = ?
+                    ORDER BY ordem
+                """
+
             results = db.execute_query(query, (id_tag_pai,))
 
             if results:

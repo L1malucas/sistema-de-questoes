@@ -71,6 +71,7 @@ import logging
 from typing import Optional, List, Dict
 from src.models.database import db
 from src.constants import LETRAS_ALTERNATIVAS, TOTAL_ALTERNATIVAS, ImagemConfig
+from src.models.queries import AlternativaQueries
 
 logger = logging.getLogger(__name__)
 
@@ -114,11 +115,8 @@ class AlternativaModel:
                 logger.error("Alternativa deve ter texto ou imagem")
                 return None
 
-            query = """
-                INSERT INTO alternativa
-                (id_questao, letra, texto, imagem, escala_imagem, correta)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """
+            # ATUALIZADO: Usar query centralizada
+            query = AlternativaQueries.INSERT
 
             params = (id_questao, letra, texto, imagem, escala_imagem, 1 if correta else 0)
 
@@ -144,12 +142,8 @@ class AlternativaModel:
             Dict: Dados da alternativa ou None se não encontrada
         """
         try:
-            query = """
-                SELECT id_alternativa, id_questao, letra, texto, imagem,
-                       escala_imagem, correta
-                FROM alternativa
-                WHERE id_alternativa = ?
-            """
+            # ATUALIZADO: Usar query centralizada
+            query = AlternativaQueries.SELECT_BY_ID
             results = db.execute_query(query, (id_alternativa,))
 
             if results and len(results) > 0:
@@ -172,13 +166,8 @@ class AlternativaModel:
             List[Dict]: Lista de alternativas (ordenadas A, B, C, D, E)
         """
         try:
-            query = """
-                SELECT id_alternativa, id_questao, letra, texto, imagem,
-                       escala_imagem, correta
-                FROM alternativa
-                WHERE id_questao = ?
-                ORDER BY letra
-            """
+            # ATUALIZADO: Usar query centralizada
+            query = AlternativaQueries.SELECT_BY_QUESTAO
             results = db.execute_query(query, (id_questao,))
 
             if results:
@@ -201,12 +190,8 @@ class AlternativaModel:
             Dict: Alternativa correta ou None se não encontrada
         """
         try:
-            query = """
-                SELECT id_alternativa, id_questao, letra, texto, imagem,
-                       escala_imagem, correta
-                FROM alternativa
-                WHERE id_questao = ? AND correta = 1
-            """
+            # ATUALIZADO: Usar query centralizada
+            query = AlternativaQueries.SELECT_CORRETA
             results = db.execute_query(query, (id_questao,))
 
             if results and len(results) > 0:

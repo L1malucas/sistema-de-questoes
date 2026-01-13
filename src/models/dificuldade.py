@@ -49,6 +49,7 @@ EXEMPLO DE USO:
 import logging
 from typing import Optional, List, Dict
 from src.models.database import db
+from src.models.queries import DificuldadeQueries
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +70,8 @@ class DificuldadeModel:
                        Cada dict contém: id_dificuldade, nome, descricao, ordem
         """
         try:
-            query = """
-                SELECT id_dificuldade, nome, descricao, ordem
-                FROM dificuldade
-                ORDER BY ordem
-            """
+            # ATUALIZADO: Usar query centralizada
+            query = DificuldadeQueries.SELECT_ALL
             results = db.execute_query(query)
 
             if results:
@@ -96,11 +94,8 @@ class DificuldadeModel:
             Dict: Dados da dificuldade ou None se não encontrada
         """
         try:
-            query = """
-                SELECT id_dificuldade, nome, descricao, ordem
-                FROM dificuldade
-                WHERE id_dificuldade = ?
-            """
+            # ATUALIZADO: Usar query centralizada
+            query = DificuldadeQueries.SELECT_BY_ID
             results = db.execute_query(query, (id_dificuldade,))
 
             if results and len(results) > 0:
@@ -123,11 +118,8 @@ class DificuldadeModel:
             Dict: Dados da dificuldade ou None se não encontrada
         """
         try:
-            query = """
-                SELECT id_dificuldade, nome, descricao, ordem
-                FROM dificuldade
-                WHERE nome = ?
-            """
+            # ATUALIZADO: Usar query centralizada
+            query = DificuldadeQueries.SELECT_BY_NOME
             results = db.execute_query(query, (nome.upper(),))
 
             if results and len(results) > 0:

@@ -1,7 +1,17 @@
 """
 Sistema de Banco de Questões Educacionais
-Módulo: Controller Questão
+Módulo: Controller Questão (Legacy)
 Versão: 1.0.1
+
+⚠️ NOTA: Este é o controller LEGADO. As views atualmente usam
+questao_controller_refactored.py que implementa arquitetura DDD.
+
+Este arquivo é mantido para:
+- Referência e migração gradual
+- Funções utilitárias ainda não migradas
+- Backwards compatibility
+
+NOVA ARQUITETURA: Ver questao_controller_refactored.py
 
 DESCRIÇÃO:
     Controller responsável pela lógica de negócio relacionada a Questões.
@@ -45,6 +55,11 @@ from src.models.dificuldade import DificuldadeModel
 from src.constants import (
     TipoQuestao, DificuldadeID, Validacao,
     ImagemConfig, ErroMensagens, TOTAL_ALTERNATIVAS
+)
+from src.utils.exceptions import (
+    ValidationError, EnunciadoVazioError, TipoInvalidoError,
+    AnoInvalidoError, AlternativasInvalidasError, AlternativaCorretaInvalidaError,
+    ImagemInvalidaError, Result
 )
 
 logger = logging.getLogger(__name__)
@@ -458,6 +473,104 @@ class QuestaoController:
             return False
 
     @staticmethod
+    def inativar_questao_v2(id_questao: int) -> Result:
+        """
+        Versão 2.0: Inativa questão usando Result pattern.
+
+        Args:
+            id_questao: ID da questão
+
+        Returns:
+            Result com sucesso ou falha
+
+        EXEMPLO DE USO:
+            result = QuestaoController.inativar_questao_v2(123)
+            if result:
+                print("Questão inativada")
+            else:
+                print(f"Erro: {result.error}")
+        """
+        try:
+            questao = QuestaoModel.buscar_por_id(id_questao)
+            if not questao:
+                return Result.fail(
+                    error="Questão não encontrada",
+                    details={'id_questao': id_questao}
+                )
+
+            if not questao.get('ativo', True):
+                return Result.fail(
+                    error="Questão já está inativa",
+                    details={'id_questao': id_questao}
+                )
+
+            sucesso = QuestaoModel.inativar(id_questao)
+            if sucesso:
+                logger.info(f"Questão {id_questao} inativada")
+                return Result.ok(data={'id_questao': id_questao})
+            else:
+                return Result.fail(
+                    error="Falha ao inativar questão",
+                    details={'id_questao': id_questao}
+                )
+
+        except Exception as e:
+            logger.error(f"Erro ao inativar questão: {e}")
+            return Result.fail(
+                error=f"Erro inesperado: {str(e)}",
+                details={'id_questao': id_questao, 'exception_type': type(e).__name__}
+            )
+
+    @staticmethod
+    def reativar_questao_v2(id_questao: int) -> Result:
+        """
+        Versão 2.0: Reativa questão usando Result pattern.
+
+        Args:
+            id_questao: ID da questão
+
+        Returns:
+            Result com sucesso ou falha
+
+        EXEMPLO DE USO:
+            result = QuestaoController.reativar_questao_v2(123)
+            if result:
+                print("Questão reativada")
+            else:
+                print(f"Erro: {result.error}")
+        """
+        try:
+            questao = QuestaoModel.buscar_por_id(id_questao)
+            if not questao:
+                return Result.fail(
+                    error="Questão não encontrada",
+                    details={'id_questao': id_questao}
+                )
+
+            if questao.get('ativo', False):
+                return Result.fail(
+                    error="Questão já está ativa",
+                    details={'id_questao': id_questao}
+                )
+
+            sucesso = QuestaoModel.reativar(id_questao)
+            if sucesso:
+                logger.info(f"Questão {id_questao} reativada")
+                return Result.ok(data={'id_questao': id_questao})
+            else:
+                return Result.fail(
+                    error="Falha ao reativar questão",
+                    details={'id_questao': id_questao}
+                )
+
+        except Exception as e:
+            logger.error(f"Erro ao reativar questão: {e}")
+            return Result.fail(
+                error=f"Erro inesperado: {str(e)}",
+                details={'id_questao': id_questao, 'exception_type': type(e).__name__}
+            )
+
+    @staticmethod
     def _processar_imagem(caminho_origem: str, tipo: str, id_questao: int = None) -> Optional[str]:
         """
         Processa uma imagem copiando para pasta de imagens do sistema.
@@ -542,6 +655,425 @@ class QuestaoController:
                 'medias': 0,
                 'dificeis': 0
             }
+
+    # ============================================
+    # MÉTODOS NOVOS COM EXCEÇÕES E RESULT PATTERN
+    # ============================================
+
+    @staticmethod
+    def buscar_questao_segura(id_questao: int) -> Result:
+        """
+        Busca questão usando Result pattern (sem lançar exceções).
+
+        EXEMPLO DE USO:
+            result = QuestaoController.buscar_questao_segura(123)
+            if result:
+                questao = result.data
+                print(f"Questão encontrada: {questao['titulo']}")
+            else:
+                print(f"Erro: {result.error}")
+
+        Args:
+            id_questao: ID da questão
+
+        Returns:
+            Result: Result.ok(data=questao) ou Result.fail(error=mensagem)
+        """
+        try:
+            questao = QuestaoModel.buscar_por_id(id_questao)
+
+            if not questao:
+                return Result.fail(
+                    "Questão não encontrada",
+                    details={'id_questao': id_questao}
+                )
+
+            return Result.ok(data=questao)
+
+        except Exception as e:
+            logger.error(f"Erro ao buscar questão {id_questao}: {e}")
+            return Result.fail(
+                f"Erro ao buscar questão: {str(e)}",
+                details={'id_questao': id_questao}
+            )
+
+    @staticmethod
+    def criar_questao_completa_v2(dados: Dict) -> Result:
+        """
+        Versão 2.0: Cria questão usando Result pattern.
+
+        Esta versão NÃO lança exceções, retorna Result.
+        Ideal para uso em APIs ou quando você quer tratar erros sem try/except.
+
+        Args:
+            dados: Dados da questão com alternativas e tags
+
+        Returns:
+            Result com id_questao em caso de sucesso
+
+        EXEMPLO DE USO:
+            result = QuestaoController.criar_questao_completa_v2(dados)
+            if result:
+                print(f"Questão criada: {result.data}")
+            else:
+                print(f"Erro: {result.error}")
+                for campo, erro in result.details.items():
+                    print(f"  - {campo}: {erro}")
+        """
+        try:
+            # 1. Validar dados básicos
+            validacao = QuestaoController.validar_dados_questao(dados)
+            if not validacao['valido']:
+                return Result.fail(
+                    error="Dados de validação inválidos",
+                    details={
+                        'erros': validacao['erros'],
+                        'avisos': validacao.get('avisos', [])
+                    }
+                )
+
+            logger.info("Criando questão completa (v2)...")
+
+            # 2. Processar imagem do enunciado
+            imagem_destino = None
+            if dados.get('imagem_enunciado'):
+                try:
+                    imagem_destino = QuestaoController._processar_imagem(
+                        dados['imagem_enunciado'],
+                        'enunciado'
+                    )
+                except Exception as e:
+                    return Result.fail(
+                        error="Falha ao processar imagem",
+                        details={'motivo': str(e)}
+                    )
+
+            # 3. Criar questão
+            id_questao = QuestaoModel.criar(
+                titulo=dados.get('titulo'),
+                enunciado=dados['enunciado'],
+                tipo=dados['tipo'].upper(),
+                ano=dados['ano'],
+                fonte=dados['fonte'],
+                id_dificuldade=dados.get('id_dificuldade'),
+                imagem_enunciado=imagem_destino,
+                escala_imagem_enunciado=dados.get('escala_imagem_enunciado', ImagemConfig.ESCALA_PADRAO),
+                resolucao=dados.get('resolucao'),
+                gabarito_discursiva=dados.get('gabarito_discursiva'),
+                observacoes=dados.get('observacoes')
+            )
+
+            if not id_questao:
+                return Result.fail(error="Falha ao criar questão no banco de dados")
+
+            logger.info(f"Questão criada com ID: {id_questao}")
+
+            # 4. Se OBJETIVA, criar alternativas
+            if dados['tipo'].upper() == TipoQuestao.OBJETIVA:
+                alternativas = dados.get('alternativas', [])
+                if alternativas:
+                    sucesso = AlternativaModel.criar_conjunto_completo(
+                        id_questao,
+                        alternativas
+                    )
+                    if not sucesso:
+                        logger.warning(f"Problema ao criar alternativas para questão {id_questao}")
+                        return Result.fail(
+                            error="Questão criada mas alternativas falharam",
+                            details={'id_questao': id_questao}
+                        )
+
+            # 5. Vincular tags
+            tags = dados.get('tags', [])
+            for id_tag in tags:
+                QuestaoModel.vincular_tag(id_questao, id_tag)
+
+            logger.info(f"Questão completa criada com sucesso. ID: {id_questao}")
+            return Result.ok(data={'id_questao': id_questao})
+
+        except Exception as e:
+            logger.error(f"Erro inesperado ao criar questão: {e}")
+            return Result.fail(
+                error=f"Erro inesperado: {str(e)}",
+                details={'exception_type': type(e).__name__}
+            )
+
+    @staticmethod
+    def criar_questao_completa_v3(dados: Dict) -> int:
+        """
+        Versão 3.0: Cria questão lançando exceções específicas.
+
+        Esta versão LANÇA EXCEÇÕES tipadas.
+        Ideal quando você quer capturar tipos específicos de erro.
+
+        Args:
+            dados: Dados da questão com alternativas e tags
+
+        Returns:
+            int: ID da questão criada
+
+        Raises:
+            EnunciadoVazioError: Enunciado não fornecido
+            TipoInvalidoError: Tipo não é OBJETIVA ou DISCURSIVA
+            AnoInvalidoError: Ano fora do range válido
+            AlternativasInvalidasError: Alternativas inválidas
+            ImagemInvalidaError: Problema com imagem
+            DatabaseError: Erro ao salvar no banco
+
+        EXEMPLO DE USO:
+            try:
+                id_questao = QuestaoController.criar_questao_completa_v3(dados)
+                print(f"Questão criada: {id_questao}")
+            except EnunciadoVazioError as e:
+                print("Erro: O enunciado é obrigatório")
+            except TipoInvalidoError as e:
+                print(f"Tipo inválido: {e.tipo_fornecido}")
+            except AlternativasInvalidasError as e:
+                print(f"Alternativas inválidas: {e.message}")
+            except Exception as e:
+                print(f"Erro geral: {e}")
+        """
+        # 1. Validar e lançar exceções específicas
+        QuestaoController.validar_dados_com_excecoes(dados)
+
+        logger.info("Criando questão completa (v3 - com exceções)...")
+
+        # 2. Processar imagem do enunciado
+        imagem_destino = None
+        if dados.get('imagem_enunciado'):
+            try:
+                imagem_destino = QuestaoController._processar_imagem(
+                    dados['imagem_enunciado'],
+                    'enunciado'
+                )
+            except Exception as e:
+                raise ImagemInvalidaError(str(dados['imagem_enunciado']), motivo=str(e))
+
+        # 3. Criar questão
+        id_questao = QuestaoModel.criar(
+            titulo=dados.get('titulo'),
+            enunciado=dados['enunciado'],
+            tipo=dados['tipo'].upper(),
+            ano=dados['ano'],
+            fonte=dados['fonte'],
+            id_dificuldade=dados.get('id_dificuldade'),
+            imagem_enunciado=imagem_destino,
+            escala_imagem_enunciado=dados.get('escala_imagem_enunciado', ImagemConfig.ESCALA_PADRAO),
+            resolucao=dados.get('resolucao'),
+            gabarito_discursiva=dados.get('gabarito_discursiva'),
+            observacoes=dados.get('observacoes')
+        )
+
+        if not id_questao:
+            from src.utils.exceptions import DatabaseError
+            raise DatabaseError("Falha ao criar questão no banco de dados")
+
+        logger.info(f"Questão criada com ID: {id_questao}")
+
+        # 4. Se OBJETIVA, criar alternativas
+        if dados['tipo'].upper() == TipoQuestao.OBJETIVA:
+            alternativas = dados.get('alternativas', [])
+            if alternativas:
+                sucesso = AlternativaModel.criar_conjunto_completo(
+                    id_questao,
+                    alternativas
+                )
+                if not sucesso:
+                    raise AlternativasInvalidasError(
+                        "Falha ao criar conjunto de alternativas",
+                        detalhes={'id_questao': id_questao}
+                    )
+
+        # 5. Vincular tags
+        tags = dados.get('tags', [])
+        for id_tag in tags:
+            QuestaoModel.vincular_tag(id_questao, id_tag)
+
+        logger.info(f"Questão completa criada com sucesso. ID: {id_questao}")
+        return id_questao
+
+    @staticmethod
+    def atualizar_questao_completa_v2(id_questao: int, dados: Dict) -> Result:
+        """
+        Versão 2.0: Atualiza questão usando Result pattern.
+
+        Esta versão NÃO lança exceções, retorna Result.
+
+        Args:
+            id_questao: ID da questão a atualizar
+            dados: Novos dados da questão
+
+        Returns:
+            Result com sucesso ou falha
+
+        EXEMPLO DE USO:
+            result = QuestaoController.atualizar_questao_completa_v2(123, dados)
+            if result:
+                print("Questão atualizada com sucesso")
+            else:
+                print(f"Erro: {result.error}")
+        """
+        try:
+            # 1. Verificar se questão existe
+            questao_existente = QuestaoModel.buscar_por_id(id_questao)
+            if not questao_existente:
+                return Result.fail(
+                    error="Questão não encontrada",
+                    details={'id_questao': id_questao}
+                )
+
+            # 2. Validar novos dados
+            validacao = QuestaoController.validar_dados_questao(dados)
+            if not validacao['valido']:
+                return Result.fail(
+                    error="Dados de validação inválidos",
+                    details={
+                        'erros': validacao['erros'],
+                        'avisos': validacao.get('avisos', [])
+                    }
+                )
+
+            logger.info(f"Atualizando questão {id_questao} (v2)...")
+
+            # 3. Processar imagem se fornecida
+            imagem_destino = None
+            if dados.get('imagem_enunciado'):
+                try:
+                    imagem_destino = QuestaoController._processar_imagem(
+                        dados['imagem_enunciado'],
+                        'enunciado'
+                    )
+                except Exception as e:
+                    return Result.fail(
+                        error="Falha ao processar imagem",
+                        details={'motivo': str(e)}
+                    )
+
+            # 4. Atualizar questão
+            sucesso = QuestaoModel.atualizar(
+                id_questao=id_questao,
+                titulo=dados.get('titulo'),
+                enunciado=dados.get('enunciado'),
+                tipo=dados.get('tipo'),
+                ano=dados.get('ano'),
+                fonte=dados.get('fonte'),
+                id_dificuldade=dados.get('id_dificuldade'),
+                imagem_enunciado=imagem_destino,
+                escala_imagem_enunciado=dados.get('escala_imagem_enunciado'),
+                resolucao=dados.get('resolucao'),
+                gabarito_discursiva=dados.get('gabarito_discursiva'),
+                observacoes=dados.get('observacoes')
+            )
+
+            if not sucesso:
+                return Result.fail(error="Falha ao atualizar questão no banco")
+
+            # 5. Se OBJETIVA, atualizar alternativas
+            if dados.get('tipo', '').upper() == TipoQuestao.OBJETIVA:
+                # Deletar alternativas antigas
+                AlternativaModel.deletar_por_questao(id_questao)
+
+                # Criar novas
+                alternativas = dados.get('alternativas', [])
+                if alternativas:
+                    sucesso_alt = AlternativaModel.criar_conjunto_completo(
+                        id_questao,
+                        alternativas
+                    )
+                    if not sucesso_alt:
+                        return Result.fail(
+                            error="Questão atualizada mas alternativas falharam",
+                            details={'id_questao': id_questao}
+                        )
+
+            # 6. Atualizar tags
+            if 'tags' in dados:
+                # Desvincular todas as tags antigas
+                QuestaoModel.desvincular_todas_tags(id_questao)
+
+                # Vincular novas
+                for id_tag in dados['tags']:
+                    QuestaoModel.vincular_tag(id_questao, id_tag)
+
+            logger.info(f"Questão {id_questao} atualizada com sucesso")
+            return Result.ok(data={'id_questao': id_questao})
+
+        except Exception as e:
+            logger.error(f"Erro inesperado ao atualizar questão: {e}")
+            return Result.fail(
+                error=f"Erro inesperado: {str(e)}",
+                details={'exception_type': type(e).__name__}
+            )
+
+    @staticmethod
+    def validar_dados_com_excecoes(dados: Dict) -> None:
+        """
+        Valida dados da questão lançando exceções específicas.
+
+        EXEMPLO DE USO:
+            try:
+                QuestaoController.validar_dados_com_excecoes(dados)
+                # Se chegou aqui, dados são válidos
+            except EnunciadoVazioError:
+                print("Enunciado vazio!")
+            except AlternativasInvalidasError as e:
+                print(f"Alternativas inválidas: {e.message}")
+            except ValidationError as e:
+                print(f"Erro de validação: {e.message}")
+
+        Args:
+            dados: Dict com dados da questão
+
+        Raises:
+            EnunciadoVazioError: Se enunciado vazio
+            TipoInvalidoError: Se tipo inválido
+            AnoInvalidoError: Se ano fora do intervalo válido
+            AlternativasInvalidasError: Se número de alternativas incorreto
+            AlternativaCorretaInvalidaError: Se problema com alternativa correta
+            ImagemInvalidaError: Se imagem inválida
+        """
+        # Validar enunciado
+        if not dados.get('enunciado') or not dados.get('enunciado').strip():
+            raise EnunciadoVazioError()
+
+        # Validar tipo
+        tipo = dados.get('tipo', '').upper()
+        if tipo not in [TipoQuestao.OBJETIVA, TipoQuestao.DISCURSIVA]:
+            raise TipoInvalidoError(tipo)
+
+        # Validar ano
+        ano = dados.get('ano')
+        if not ano:
+            raise ValidationError("O ano é obrigatório")
+
+        if not isinstance(ano, int) or ano < Validacao.ANO_MINIMO or ano > Validacao.ANO_MAXIMO:
+            raise AnoInvalidoError(ano, Validacao.ANO_MINIMO, Validacao.ANO_MAXIMO)
+
+        # Validar fonte
+        if not dados.get('fonte') or not dados.get('fonte').strip():
+            raise ValidationError(ErroMensagens.FONTE_VAZIA)
+
+        # Validar alternativas se OBJETIVA
+        if tipo == TipoQuestao.OBJETIVA:
+            alternativas = dados.get('alternativas', [])
+
+            if len(alternativas) < TOTAL_ALTERNATIVAS:
+                raise AlternativasInvalidasError(len(alternativas), TOTAL_ALTERNATIVAS)
+
+            # Verificar alternativa correta
+            corretas = [alt for alt in alternativas if alt.get('correta', False)]
+            if len(corretas) != 1:
+                raise AlternativaCorretaInvalidaError(len(corretas))
+
+        # Validar imagem do enunciado
+        imagem_enunciado = dados.get('imagem_enunciado')
+        if imagem_enunciado:
+            if not Path(imagem_enunciado).exists():
+                raise ImagemInvalidaError(imagem_enunciado, "Arquivo não encontrado")
+
+            ext = Path(imagem_enunciado).suffix.lower()
+            if ext not in ImagemConfig.EXTENSOES_VALIDAS:
+                raise ImagemInvalidaError(imagem_enunciado, f"Formato inválido: {ext}")
 
 
 logger.info("QuestaoController carregado")
