@@ -104,6 +104,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from src.models.database import db
+from src.constants import TipoQuestao, ImagemConfig
 
 logger = logging.getLogger(__name__)
 
@@ -114,14 +115,14 @@ class QuestaoModel:
     Implementa operações CRUD e gerenciamento de relacionamentos.
     """
 
-    # Constantes
-    TIPO_OBJETIVA = 'OBJETIVA'
-    TIPO_DISCURSIVA = 'DISCURSIVA'
+    # ATUALIZADO: Usar constantes centralizadas
+    TIPO_OBJETIVA = TipoQuestao.OBJETIVA
+    TIPO_DISCURSIVA = TipoQuestao.DISCURSIVA
 
     @staticmethod
     def criar(enunciado: str, tipo: str, ano: int, fonte: str,
               titulo: str = None, id_dificuldade: int = None,
-              imagem_enunciado: str = None, escala_imagem_enunciado: float = 0.7,
+              imagem_enunciado: str = None, escala_imagem_enunciado: float = ImagemConfig.ESCALA_PADRAO,
               resolucao: str = None, gabarito_discursiva: str = None,
               observacoes: str = None) -> Optional[int]:
         """

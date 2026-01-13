@@ -42,6 +42,10 @@ from src.models.questao import QuestaoModel
 from src.models.alternativa import AlternativaModel
 from src.models.tag import TagModel
 from src.models.dificuldade import DificuldadeModel
+from src.constants import (
+    TipoQuestao, DificuldadeID, Validacao,
+    ImagemConfig, ErroMensagens, TOTAL_ALTERNATIVAS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,44 +72,50 @@ class QuestaoController:
         try:
             # Validar enunciado (obrigatório)
             if not dados.get('enunciado') or not dados.get('enunciado').strip():
-                erros.append("O enunciado é obrigatório")
+                erros.append(ErroMensagens.ENUNCIADO_VAZIO)
 
             # Validar tipo (obrigatório)
             tipo = dados.get('tipo', '').upper()
-            if tipo not in [QuestaoModel.TIPO_OBJETIVA, QuestaoModel.TIPO_DISCURSIVA]:
-                erros.append("Tipo deve ser OBJETIVA ou DISCURSIVA")
+            if tipo not in [TipoQuestao.OBJETIVA, TipoQuestao.DISCURSIVA]:
+                erros.append(ErroMensagens.TIPO_INVALIDO)
 
             # Validar ano (obrigatório e razoável)
             ano = dados.get('ano')
             if not ano:
                 erros.append("O ano é obrigatório")
-            elif not isinstance(ano, int) or ano < 1900 or ano > 2100:
-                erros.append("Ano deve estar entre 1900 e 2100")
+            elif not isinstance(ano, int) or ano < Validacao.ANO_MINIMO or ano > Validacao.ANO_MAXIMO:
+                erros.append(ErroMensagens.ANO_INVALIDO)
 
             # Validar fonte (obrigatório)
             if not dados.get('fonte') or not dados.get('fonte').strip():
-                erros.append("A fonte/banca é obrigatória")
+                erros.append(ErroMensagens.FONTE_VAZIA)
 
             # Validar dificuldade (opcional, mas se fornecida deve ser válida)
             id_dificuldade = dados.get('id_dificuldade')
-            if id_dificuldade and id_dificuldade not in [1, 2, 3, -1]:
-                erros.append("Dificuldade inválida (deve ser 1, 2 ou 3)")
+            dificuldades_validas = [
+                DificuldadeID.FACIL,
+                DificuldadeID.MEDIO,
+                DificuldadeID.DIFICIL,
+                DificuldadeID.SEM_DIFICULDADE
+            ]
+            if id_dificuldade and id_dificuldade not in dificuldades_validas:
+                erros.append(ErroMensagens.DIFICULDADE_INVALIDA)
 
             # Validar alternativas se OBJETIVA
-            if tipo == QuestaoModel.TIPO_OBJETIVA:
+            if tipo == TipoQuestao.OBJETIVA:
                 alternativas = dados.get('alternativas', [])
 
                 if len(alternativas) == 0:
                     erros.append("Questão objetiva deve ter alternativas")
-                elif len(alternativas) < 5:
-                    erros.append(f"Questão objetiva deve ter 5 alternativas (encontradas: {len(alternativas)})")
+                elif len(alternativas) < TOTAL_ALTERNATIVAS:
+                    erros.append(ErroMensagens.FALTAM_ALTERNATIVAS)
 
                 # Verificar se há exatamente uma correta
                 corretas = [alt for alt in alternativas if alt.get('correta', False)]
                 if len(corretas) == 0:
-                    erros.append("Marque qual alternativa é a correta")
+                    erros.append(ErroMensagens.FALTA_CORRETA)
                 elif len(corretas) > 1:
-                    erros.append("Apenas uma alternativa pode ser correta")
+                    erros.append(ErroMensagens.MULTIPLAS_CORRETAS)
 
                 # Verificar se alternativas têm conteúdo
                 for alt in alternativas:
@@ -114,24 +124,24 @@ class QuestaoController:
 
             # Validar tags (recomendado ter pelo menos 1)
             tags = dados.get('tags', [])
-            if len(tags) == 0:
-                avisos.append("Recomendado adicionar pelo menos uma tag para facilitar a busca")
+            if len(tags) < Validacao.MIN_TAGS_POR_QUESTAO:
+                avisos.append(ErroMensagens.SEM_TAGS)
 
             # Validar imagem do enunciado (se fornecida)
             imagem_enunciado = dados.get('imagem_enunciado')
             if imagem_enunciado:
                 if not Path(imagem_enunciado).exists():
-                    erros.append("Arquivo de imagem do enunciado não encontrado")
+                    erros.append(ErroMensagens.IMAGEM_NAO_ENCONTRADA)
                 else:
                     # Validar extensão
                     ext = Path(imagem_enunciado).suffix.lower()
-                    if ext not in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']:
-                        erros.append(f"Formato de imagem inválido: {ext}")
+                    if ext not in ImagemConfig.EXTENSOES_VALIDAS:
+                        erros.append(ErroMensagens.FORMATO_INVALIDO)
 
             # Validar título (se fornecido)
             titulo = dados.get('titulo')
-            if titulo and len(titulo) > 200:
-                avisos.append("Título muito longo (máximo 200 caracteres)")
+            if titulo and len(titulo) > Validacao.TITULO_MAX_LENGTH:
+                avisos.append(f"Título muito longo (máximo {Validacao.TITULO_MAX_LENGTH} caracteres)")
 
             return {
                 'valido': len(erros) == 0,

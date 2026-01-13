@@ -70,6 +70,7 @@ EXEMPLO DE USO:
 import logging
 from typing import Optional, List, Dict
 from src.models.database import db
+from src.constants import LETRAS_ALTERNATIVAS, TOTAL_ALTERNATIVAS, ImagemConfig
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +81,13 @@ class AlternativaModel:
     Implementa operações CRUD e validações.
     """
 
-    # Constantes
-    LETRAS_VALIDAS = ['A', 'B', 'C', 'D', 'E']
-    TOTAL_ALTERNATIVAS = 5
+    # ATUALIZADO: Usar constantes centralizadas
+    LETRAS_VALIDAS = LETRAS_ALTERNATIVAS
+    TOTAL_ALTERNATIVAS = TOTAL_ALTERNATIVAS
 
     @staticmethod
     def criar(id_questao: int, letra: str, texto: str = None,
-              imagem: str = None, escala_imagem: float = 0.7,
+              imagem: str = None, escala_imagem: float = ImagemConfig.ESCALA_PADRAO,
               correta: bool = False) -> Optional[int]:
         """
         Cria uma nova alternativa.

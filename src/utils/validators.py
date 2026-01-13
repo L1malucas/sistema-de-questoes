@@ -13,11 +13,13 @@ import logging
 import os
 from pathlib import Path
 
+from src.constants import ImagemConfig
+
 logger = logging.getLogger(__name__)
 
-# Formatos de imagem permitidos
-FORMATOS_IMAGEM_PERMITIDOS = ['.png', '.jpg', '.jpeg', '.svg']
-TAMANHO_MAX_IMAGEM_MB = 10
+# ATUALIZADO: Usar constantes centralizadas
+FORMATOS_IMAGEM_PERMITIDOS = ImagemConfig.EXTENSOES_VALIDAS
+TAMANHO_MAX_IMAGEM_MB = ImagemConfig.MAX_SIZE_MB
 
 def validar_imagem(caminho: str) -> dict:
     """Valida se arquivo é uma imagem válida"""
