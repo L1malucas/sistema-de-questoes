@@ -195,7 +195,7 @@ class TagTreeWidget(QWidget):
             item.setText(0, tag_dto.nome)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(0, Qt.CheckState.Unchecked)
-            item.setData(0, Qt.ItemDataRole.UserRole, tag_dto.id_tag)
+            item.setData(0, Qt.ItemDataRole.UserRole, tag_dto.id)
             if tag_dto.filhos:
                 self._add_items_recursively(item, tag_dto.filhos)
 
