@@ -12,28 +12,70 @@ logger = logging.getLogger(__name__)
 
 def escape_latex(text: str) -> str:
     """
-    Escapa caracteres especiais do LaTeX em uma string.
+    Escapa caracteres especiais do LaTeX em uma string,
+    preservando blocos matematicos ($...$, $$...$$, \\[...\\], \\(...\\)).
     """
     if not isinstance(text, str):
         return text
-    
-    # Ordem é importante
-    conv = {
-        '&': r'\\&',
-        '%': r'\\%',
-        '$': r'\\$',
-        '#': r'\\#',
-        '_': r'\\_',
-        '{': r'\\{',
-        '}': r'\\}',
-        '~': r'\\textasciitilde{}',
-        '^': r'\\textasciicircum{}',
-        '\\': r'\\textbackslash{}',
-        '<': r'\\textless{}',
-        '>': r'\\textgreater{}',
-    }
-    regex = re.compile('|'.join(re.escape(str(key)) for key in sorted(conv.keys(), key=len, reverse=True)))
-    return regex.sub(lambda match: conv[match.group()], text)
+
+    # Padroes para blocos matematicos (ordem importa - $$ antes de $)
+    math_patterns = [
+        (r'\$\$.*?\$\$', 'MATHBLOCK_DISPLAY'),      # $$...$$
+        (r'\$[^\$]+?\$', 'MATHBLOCK_INLINE'),        # $...$
+        (r'\\\[.*?\\\]', 'MATHBLOCK_BRACKET'),       # \[...\]
+        (r'\\\(.*?\\\)', 'MATHBLOCK_PAREN'),         # \(...\)
+        (r'\\begin\{equation\}.*?\\end\{equation\}', 'MATHBLOCK_EQ'),  # \begin{equation}...\end{equation}
+        (r'\\begin\{align\}.*?\\end\{align\}', 'MATHBLOCK_ALIGN'),     # \begin{align}...\end{align}
+        (r'\\begin\{align\*\}.*?\\end\{align\*\}', 'MATHBLOCK_ALIGNSTAR'),  # \begin{align*}...\end{align*}
+        (r'\\frac\{[^}]*\}\{[^}]*\}', 'MATHBLOCK_FRAC'),  # \frac{...}{...}
+        (r'\\sqrt\{[^}]*\}', 'MATHBLOCK_SQRT'),            # \sqrt{...}
+        (r'\\sqrt\[[^\]]*\]\{[^}]*\}', 'MATHBLOCK_SQRTN'), # \sqrt[n]{...}
+    ]
+
+    # Extrair e armazenar blocos matematicos
+    math_blocks = []
+
+    def save_math_block(match):
+        math_blocks.append(match.group(0))
+        return f'__MATH_{len(math_blocks)-1}__'
+
+    # Substituir blocos matematicos por placeholders
+    for pattern, _ in math_patterns:
+        text = re.sub(pattern, save_math_block, text, flags=re.DOTALL)
+
+    # Tambem preservar comandos LaTeX comuns (começando com \)
+    latex_commands = []
+
+    def save_latex_cmd(match):
+        latex_commands.append(match.group(0))
+        return f'__LATEXCMD_{len(latex_commands)-1}__'
+
+    # Preservar comandos LaTeX como \textbf{}, \textit{}, \underline{}, etc.
+    text = re.sub(r'\\[a-zA-Z]+(?:\{[^}]*\})*', save_latex_cmd, text)
+
+    # Agora escapar caracteres especiais no texto restante
+    # Nao escapar backslash aqui pois ja preservamos os comandos LaTeX
+    replacements = [
+        ('&', r'\&'),
+        ('%', r'\%'),
+        ('#', r'\#'),
+        ('~', r'\textasciitilde{}'),
+        ('<', r'\textless{}'),
+        ('>', r'\textgreater{}'),
+    ]
+
+    for char, replacement in replacements:
+        text = text.replace(char, replacement)
+
+    # Restaurar comandos LaTeX
+    for i, cmd in enumerate(latex_commands):
+        text = text.replace(f'__LATEXCMD_{i}__', cmd)
+
+    # Restaurar blocos matematicos
+    for i, block in enumerate(math_blocks):
+        text = text.replace(f'__MATH_{i}__', block)
+
+    return text
 
 
 class ExportService:

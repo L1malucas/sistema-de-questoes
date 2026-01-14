@@ -255,9 +255,6 @@ def criar_tag_controller():
 
 
 def criar_export_controller():
-    """Factory para criar ExportController (placeholder)"""
-    # Por enquanto, retornar None - funcionalidade de export precisa ser reimplementada
-    class ExportControllerPlaceholder:
-        def exportar_lista(self, opcoes):
-            raise NotImplementedError("Export functionality needs to be reimplemented with ORM")
-    return ExportControllerPlaceholder()
+    """Factory para criar ExportController"""
+    from src.controllers.export_controller import ExportController
+    return ExportController()

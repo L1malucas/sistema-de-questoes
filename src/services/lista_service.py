@@ -69,6 +69,36 @@ class ListaService:
         # Buscar tags relacionadas
         tags = self.lista_repo.buscar_tags_relacionadas(codigo)
 
+        # Buscar questoes com dados completos
+        questoes_data = []
+        for q in lista.questoes:
+            if not q.ativo:
+                continue
+            questao_dict = {
+                'codigo': q.codigo,
+                'titulo': q.titulo,
+                'tipo': q.tipo.codigo if q.tipo else None,
+                'enunciado': q.enunciado,
+                'fonte': q.fonte.sigla if q.fonte else None,
+                'ano': q.ano.ano if q.ano else None,
+                'alternativas': [
+                    {
+                        'uuid': alt.uuid,
+                        'letra': alt.letra,
+                        'texto': alt.texto
+                    }
+                    for alt in q.alternativas if alt.ativo
+                ] if hasattr(q, 'alternativas') else [],
+                'resposta': None
+            }
+            # Buscar resposta se existir
+            if hasattr(q, 'resposta') and q.resposta:
+                if hasattr(q.resposta, 'alternativa_correta') and q.resposta.alternativa_correta:
+                    questao_dict['resposta'] = q.resposta.alternativa_correta.letra
+                elif hasattr(q.resposta, 'gabarito_discursivo'):
+                    questao_dict['resposta'] = q.resposta.gabarito_discursivo
+            questoes_data.append(questao_dict)
+
         return {
             'codigo': lista.codigo,
             'uuid': lista.uuid,
@@ -76,14 +106,7 @@ class ListaService:
             'tipo': lista.tipo,
             'cabecalho': lista.cabecalho,
             'instrucoes': lista.instrucoes,
-            'questoes': [
-                {
-                    'codigo': q.codigo,
-                    'titulo': q.titulo,
-                    'tipo': q.tipo.codigo if q.tipo else None
-                }
-                for q in lista.questoes if q.ativo
-            ],
+            'questoes': questoes_data,
             'tags_relacionadas': [tag.nome for tag in tags],
             'total_questoes': lista.contar_questoes()
         }

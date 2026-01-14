@@ -2,6 +2,7 @@
 Controller para gerenciar a exportação de listas e outros dados.
 """
 import logging
+import re
 from pathlib import Path
 from typing import List
 
@@ -41,56 +42,79 @@ class ExportController:
 
     def _gerar_conteudo_latex(self, opcoes: ExportOptionsDTO) -> str:
         """
-        Gera o conteúdo LaTeX completo para a lista, aplicando as opções de exportação.
+        Gera o conteudo LaTeX completo para a lista, aplicando as opcoes de exportacao.
         """
-        # 1. Buscar dados da lista e questões usando o service layer
-        # Assumindo que a fachada de serviço pode buscar uma lista por ID (ou código)
-        # NOTA: O DTO tem id_lista, mas o service layer usa códigos (ex: "LST-2026-0001")
-        # Esta parte pode precisar de um adapter se a view só passa o ID inteiro.
-        # Por simplicidade, vamos assumir que o service facade pode lidar com isso.
-        
-        # Esta é uma implementação de placeholder. A lógica real dependeria do `lista_service`
-        lista_dados = services.lista.buscar_lista_por_id_legacy(opcoes.id_lista)
+        # 1. Buscar dados da lista
+        lista_dados = services.lista.buscar_lista(opcoes.id_lista)
         if not lista_dados:
-            raise ValueError(f"Lista com ID {opcoes.id_lista} não encontrada.")
+            raise ValueError(f"Lista com codigo {opcoes.id_lista} nao encontrada.")
 
         # 2. Carregar o template base
         template_content = self._carregar_template(opcoes.template_latex)
 
-        # 3. Substituir placeholders no template (exemplo simples)
-        # Um sistema de template mais robusto (como Jinja2) seria melhor aqui.
-        template_content = template_content.replace("{LISTA_TITULO}", escape_latex(lista_dados['titulo']))
-        template_content = template_content.replace("{NUM_COLUNAS}", str(opcoes.layout_colunas))
+        # 3. Substituir placeholders do cabecalho
+        template_content = template_content.replace("[TITULO_LISTA]", escape_latex(lista_dados['titulo']))
+        template_content = template_content.replace("[NOME_ESCOLA]", escape_latex(lista_dados.get('cabecalho', '') or ''))
+        template_content = template_content.replace("[NOME_PROFESSOR]", "")
+        template_content = template_content.replace("[DATA]", "")
+        template_content = template_content.replace("[TURMA]", "")
+        template_content = template_content.replace("[INSTRUCOES]", escape_latex(lista_dados.get('instrucoes', '') or ''))
 
-        # 4. Gerar o bloco de questões
+        # 4. Gerar o bloco de questoes
         questoes_latex = []
         for i, questao in enumerate(lista_dados['questoes'], 1):
-            enunciado = escape_latex(questao['enunciado'])
-            item = fr"\item {enunciado}\n"
-            
-            # Adicionar alternativas
-            if questao.get('alternativas'):
-                item += r"\begin{enumerate}\n"
-                for alt in questao['alternativas']:
-                    texto_alt = escape_latex(alt['texto'])
-                    item += fr"  \item[{alt['letra']})] {texto_alt}\n"
-                item += r"\end{enumerate}\n"
-            
+            enunciado = escape_latex(questao.get('enunciado', ''))
+            fonte = escape_latex(questao.get('fonte') or '')
+            ano = escape_latex(str(questao.get('ano') or ''))
+
+            # Cabecalho da questao
+            if fonte or ano:
+                item = f"\\item \\textbf{{({ano} - {fonte})}}\n\n"
+            else:
+                item = "\\item "
+
+            item += f"{enunciado}\n\n"
+
+            # Adicionar alternativas (se objetiva)
+            alternativas = questao.get('alternativas', [])
+            if alternativas:
+                item += "\\begin{enumerate}[label=\\Alph*)]\n"
+                for alt in alternativas:
+                    texto_alt = escape_latex(alt.get('texto', ''))
+                    item += f"    \\item {texto_alt}\n"
+                item += "\\end{enumerate}\n"
+
+            item += "\\vspace{0.5cm}\n"
             questoes_latex.append(item)
-            
-        template_content = template_content.replace("{BLOCO_QUESTOES}", "\n".join(questoes_latex))
-        
-        # 5. Gerar o bloco de gabarito
+
+        # Substituir placeholder de questoes
+        questoes_block = "\n".join(questoes_latex)
+        template_content = template_content.replace("% [QUESTOES_AQUI]", questoes_block)
+
+        # 5. Gerar o bloco de gabarito ou remover secao inteira
         if opcoes.incluir_gabarito:
-            gabarito_latex = [r"\section*{Gabarito}"]
-            gabarito_latex.append(r"\begin{enumerate}")
+            gabarito_latex = []
             for i, questao in enumerate(lista_dados['questoes'], 1):
-                resposta = escape_latex(str(questao.get('resposta', 'N/A')))
-                gabarito_latex.append(fr"  \item {resposta}")
-            gabarito_latex.append(r"\end{enumerate}")
-            template_content = template_content.replace("{BLOCO_GABARITO}", "\n".join(gabarito_latex))
+                resposta = questao.get('resposta') or 'N/A'
+                gabarito_latex.append(f"\\item Questao {i}: {escape_latex(str(resposta))}")
+            gabarito_block = "\n".join(gabarito_latex)
+            template_content = template_content.replace("% [GABARITO_AQUI]", gabarito_block)
         else:
-            template_content = template_content.replace("{BLOCO_GABARITO}", "")
+            # Remover secao inteira de gabarito
+            template_content = re.sub(
+                r'% ={10,}\s*\n% GABARITO \(opcional\)\s*\n% ={10,}\s*\n.*?\\end\{enumerate\}',
+                '',
+                template_content,
+                flags=re.DOTALL
+            )
+
+        # 6. Remover secao inteira de resolucoes (nao implementada ainda)
+        template_content = re.sub(
+            r'% ={10,}\s*\n% RESOLU[ÇC][ÕO]ES \(opcional\)\s*\n% ={10,}\s*\n.*?\\end\{enumerate\}',
+            '',
+            template_content,
+            flags=re.DOTALL
+        )
 
         return template_content
 
@@ -111,7 +135,7 @@ class ExportController:
         latex_content = self._gerar_conteudo_latex(opcoes)
 
         output_dir = Path(opcoes.output_dir)
-        lista_dados = services.lista.buscar_lista_por_id_legacy(opcoes.id_lista)
+        lista_dados = services.lista.buscar_lista(opcoes.id_lista)
         base_filename = f"{lista_dados['titulo'].replace(' ', '_')}_{opcoes.template_latex.replace('.tex', '')}"
 
         if opcoes.tipo_exportacao == 'direta':
