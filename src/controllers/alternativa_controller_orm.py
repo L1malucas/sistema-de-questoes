@@ -2,7 +2,7 @@
 AlternativaController - Nova versão usando ORM + Service Layer
 """
 from typing import Dict, List, Optional, Any
-from services import services
+from src.services import services
 
 
 class AlternativaControllerORM:

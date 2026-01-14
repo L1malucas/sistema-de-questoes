@@ -254,12 +254,22 @@ class QuestaoCard(QFrame):
     deleteClicked = pyqtSignal(int)
     addToListClicked = pyqtSignal(int) # Novo sinal para "Adicionar à Lista"
 
-    def __init__(self, questao_dto: 'QuestaoResponseDTO', parent=None):
+    def __init__(self, questao_dto, parent=None):
         super().__init__(parent)
-        self.questao_id = questao_dto.id
+        # Aceitar tanto dict quanto DTO
+        if isinstance(questao_dto, dict):
+            self.questao_id = questao_dto.get('id', questao_dto.get('uuid'))
+        else:
+            self.questao_id = questao_dto.id
         self.init_ui(questao_dto)
 
-    def init_ui(self, dto: 'QuestaoResponseDTO'):
+    def _get_attr(self, obj, attr, default=None):
+        """Helper para obter atributo tanto de dict quanto de objeto"""
+        if isinstance(obj, dict):
+            return obj.get(attr, default)
+        return getattr(obj, attr, default)
+
+    def init_ui(self, dto):
         self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         self.setStyleSheet("""
             QFrame {
@@ -281,15 +291,16 @@ class QuestaoCard(QFrame):
         header_layout = QHBoxLayout()
 
         # Título
-        titulo = dto.titulo or 'Sem título'
+        titulo = self._get_attr(dto, 'titulo') or 'Sem título'
         title_label = QLabel(titulo)
         title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c3e50;")
         title_label.setWordWrap(True)
         header_layout.addWidget(title_label, 1)
 
         # Badge de tipo
-        tipo_label = QLabel(dto.tipo)
-        tipo_color = "#2196f3" if dto.tipo == 'OBJETIVA' else "#9c27b0"
+        tipo = self._get_attr(dto, 'tipo', 'N/A')
+        tipo_label = QLabel(tipo)
+        tipo_color = "#2196f3" if tipo == 'OBJETIVA' else "#9c27b0"
         tipo_label.setStyleSheet(f"""
             QLabel {{
                 background-color: {tipo_color};
@@ -305,7 +316,8 @@ class QuestaoCard(QFrame):
         layout.addLayout(header_layout)
 
         # Preview do enunciado
-        enunciado_preview = (dto.enunciado[:150] + "...") if len(dto.enunciado) > 150 else dto.enunciado
+        enunciado = self._get_attr(dto, 'enunciado', '')
+        enunciado_preview = (enunciado[:150] + "...") if len(enunciado) > 150 else enunciado
         enunciado_label = QLabel(enunciado_preview)
         enunciado_label.setStyleSheet("color: #555; margin-top: 8px; font-size: 12px;")
         enunciado_label.setWordWrap(True)
@@ -315,7 +327,10 @@ class QuestaoCard(QFrame):
         meta_layout = QHBoxLayout()
         meta_layout.setContentsMargins(0, 10, 0, 5)
 
-        meta_text = f"📚 {dto.fonte or 'N/A'} • 📅 {dto.ano or 'N/A'} • ⭐ {dto.dificuldade_nome or 'N/A'}"
+        fonte = self._get_attr(dto, 'fonte') or 'N/A'
+        ano = self._get_attr(dto, 'ano') or 'N/A'
+        dificuldade = self._get_attr(dto, 'dificuldade_nome') or self._get_attr(dto, 'dificuldade') or 'N/A'
+        meta_text = f"📚 {fonte} • 📅 {ano} • ⭐ {dificuldade}"
         meta_label = QLabel(meta_text)
         meta_label.setStyleSheet("color: #777; font-size: 11px;")
         meta_layout.addWidget(meta_label)

@@ -132,6 +132,10 @@ class ListaControllerAdapter:
         """Lista todas as listas"""
         return ListaControllerORM.listar_listas()
 
+    def listar_todas_listas(self):
+        """Alias para listar_todas - compatibilidade"""
+        return self.listar_todas()
+
     def adicionar_questao(self, lista_id, questao_id):
         """Adiciona questão à lista"""
         if isinstance(lista_id, int):

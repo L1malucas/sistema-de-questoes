@@ -23,6 +23,7 @@ class TagService:
         tags = self.tag_repo.listar_todos()
         return [
             {
+                'id': hash(tag.uuid) % 2147483647,  # Converter uuid para int positivo
                 'uuid': tag.uuid,
                 'nome': tag.nome,
                 'numeracao': tag.numeracao,
@@ -42,6 +43,7 @@ class TagService:
         tags = self.tag_repo.listar_raizes()
         return [
             {
+                'id': hash(tag.uuid) % 2147483647,
                 'uuid': tag.uuid,
                 'nome': tag.nome,
                 'numeracao': tag.numeracao,
@@ -63,6 +65,7 @@ class TagService:
         tags = self.tag_repo.listar_filhas(numeracao_pai)
         return [
             {
+                'id': hash(tag.uuid) % 2147483647,
                 'uuid': tag.uuid,
                 'nome': tag.nome,
                 'numeracao': tag.numeracao,
@@ -86,6 +89,7 @@ class TagService:
             return None
 
         return {
+            'id': hash(tag.uuid) % 2147483647,
             'uuid': tag.uuid,
             'nome': tag.nome,
             'numeracao': tag.numeracao,
@@ -108,6 +112,7 @@ class TagService:
             return None
 
         return {
+            'id': hash(tag.uuid) % 2147483647,
             'uuid': tag.uuid,
             'nome': tag.nome,
             'numeracao': tag.numeracao,
@@ -124,6 +129,7 @@ class TagService:
         """
         def construir_arvore(tag):
             return {
+                'id': hash(tag.uuid) % 2147483647,
                 'uuid': tag.uuid,
                 'nome': tag.nome,
                 'numeracao': tag.numeracao,

@@ -192,9 +192,11 @@ class QuestaoService:
 
         return [
             {
+                'id': hash(q.uuid) % 2147483647,  # Converter uuid para int positivo
                 'codigo': q.codigo,
                 'uuid': q.uuid,
                 'titulo': q.titulo,
+                'enunciado': q.enunciado,
                 'tipo': q.tipo.codigo if q.tipo else None,
                 'ano': q.ano.ano if q.ano else None,
                 'fonte': q.fonte.sigla if q.fonte else None,

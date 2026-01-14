@@ -76,10 +76,14 @@ class ListaPanel(QWidget):
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
                 self.lista_widget.addItem(item)
             else:
-                for lista_dto in listas:
-                    texto = f"{lista_dto.titulo} ({lista_dto.total_questoes} questões)"
+                for lista in listas:
+                    # Acessar como dict em vez de atributo
+                    titulo = lista.get('titulo', 'Sem título')
+                    total_questoes = lista.get('total_questoes', 0)
+                    lista_id = lista.get('id', lista.get('uuid'))
+                    texto = f"{titulo} ({total_questoes} questões)"
                     item = QListWidgetItem(texto)
-                    item.setData(Qt.ItemDataRole.UserRole, lista_dto.id)
+                    item.setData(Qt.ItemDataRole.UserRole, lista_id)
                     self.lista_widget.addItem(item)
         except Exception as e:
             ErrorHandler.handle_exception(self, e, "Erro ao carregar listas.")

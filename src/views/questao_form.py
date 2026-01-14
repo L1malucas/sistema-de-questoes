@@ -268,7 +268,7 @@ class QuestaoForm(QDialog):
                     'letra': widget.letra,
                     'texto': widget.texto_input.text().strip(),
                     'correta': widget.checkbox.isChecked(),
-                    'imagem': widget.image_path
+                    'uuid_imagem': widget.image_path
                 })
         return data
 

@@ -3,7 +3,7 @@ QuestaoController - Nova versão usando ORM + Service Layer
 Substitui questao_controller.py (legacy) e questao_controller_refactored.py
 """
 from typing import Dict, List, Optional, Any
-from services import services
+from src.services import services
 
 
 class QuestaoControllerORM:

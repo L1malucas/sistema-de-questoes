@@ -184,7 +184,18 @@ class SearchPanel(QWidget):
         logger.info("Executando busca")
         self.clear_results()
         try:
-            filtro = self._get_filtros()
+            filtro_dto = self._get_filtros()
+            # Converter DTO para dict
+            filtro = {
+                'titulo': filtro_dto.titulo,
+                'tipo': filtro_dto.tipo,
+                'ano_inicio': filtro_dto.ano_inicio,
+                'ano_fim': filtro_dto.ano_fim,
+                'fonte': filtro_dto.fonte,
+                'dificuldade': filtro_dto.dificuldade,
+                'tags': filtro_dto.tags,
+                'ativa': filtro_dto.ativa
+            }
             questoes_dto = self.controller.buscar_questoes(filtro)
             if not questoes_dto:
                 self.show_empty_state()

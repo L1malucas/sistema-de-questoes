@@ -3,7 +3,7 @@ ListaController - Nova versão usando ORM + Service Layer
 Substitui lista_controller.py (legacy)
 """
 from typing import Dict, List, Optional, Any
-from services import services
+from src.services import services
 
 
 class ListaControllerORM:

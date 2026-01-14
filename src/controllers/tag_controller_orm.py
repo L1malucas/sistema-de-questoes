@@ -3,7 +3,7 @@ TagController - Nova versão usando ORM + Service Layer
 Substitui tag_controller.py (legacy)
 """
 from typing import Dict, List, Optional, Any
-from services import services
+from src.services import services
 from src.application.dtos.tag_dto import TagResponseDTO
 
 

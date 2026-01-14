@@ -121,8 +121,8 @@ class TagManager(QDialog):
             item = QTreeWidgetItem(parent_item)
             item.setText(0, tag_dto.nome)
             item.setText(1, tag_dto.numeracao)
-            item.setData(0, Qt.ItemDataRole.UserRole, tag_dto.id_tag)
-            
+            item.setData(0, Qt.ItemDataRole.UserRole, tag_dto.id)
+
             if tag_dto.filhos:
                 self._add_tree_items(item, tag_dto.filhos)
 

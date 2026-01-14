@@ -105,6 +105,7 @@ class ListaService:
 
         return [
             {
+                'id': hash(l.uuid) % 2147483647,  # Converter uuid para int positivo
                 'codigo': l.codigo,
                 'uuid': l.uuid,
                 'titulo': l.titulo,
