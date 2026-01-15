@@ -257,6 +257,25 @@ class TagTreeWidget(QWidget):
             iterator += 1
         return selected_ids
 
+    def get_selected_content_tags_with_names(self) -> List[tuple]:
+        """
+        Retorna lista de tuplas (uuid, nome) das tags de conteúdo selecionadas.
+        Tags de conteúdo são aquelas cuja numeração começa com dígito (não V ou N).
+        """
+        selected_tags = []
+        iterator = QTreeWidgetItemIterator(self.tree)
+        while iterator.value():
+            item = iterator.value()
+            if item.checkState(0) == Qt.CheckState.Checked:
+                tag_uuid = item.data(0, Qt.ItemDataRole.UserRole)
+                numeracao = item.data(0, Qt.ItemDataRole.UserRole + 1) or ""
+                tag_nome = item.text(0)
+                # Verificar se é tag de conteúdo (numeração começa com dígito)
+                if tag_uuid and numeracao and numeracao[0].isdigit():
+                    selected_tags.append((tag_uuid, tag_nome))
+            iterator += 1
+        return selected_tags
+
     def set_selected_tags(self, tag_uuids: List[str]):
         """Marca os checkboxes para a lista de UUIDs de tags fornecida."""
         if not tag_uuids:

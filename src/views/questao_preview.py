@@ -149,7 +149,9 @@ class QuestaoPreview(QDialog):
             tags_layout = QHBoxLayout(tags_group)
 
             for tag in self.questao_data['tags']:
-                tag_label = QLabel(tag)
+                # Tag pode ser string ou dict com 'nome'
+                tag_nome = tag.get('nome') if isinstance(tag, dict) else tag
+                tag_label = QLabel(tag_nome)
                 tag_label.setStyleSheet("""
                     QLabel {
                         background-color: #e3f2fd;

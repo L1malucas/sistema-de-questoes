@@ -27,6 +27,58 @@ class QuestaoService:
         self.resposta_repo = RespostaQuestaoRepository(session)
         self.tag_repo = TagRepository(session)
 
+    def _gerar_titulo_automatico(
+        self,
+        tags: Optional[List[str]],
+        ano: Optional[int]
+    ) -> Optional[str]:
+        """
+        Gera título automático no formato: FONTE - CONTEÚDO - ANO
+
+        Args:
+            tags: Lista de UUIDs de tags
+            ano: Ano de referência
+
+        Returns:
+            Título gerado ou None se não houver dados suficientes
+        """
+        if not tags:
+            return None
+
+        fonte_nome = None
+        conteudo_nome = None
+
+        for tag_uuid in tags:
+            if not isinstance(tag_uuid, str):
+                continue
+
+            tag = self.tag_repo.buscar_por_uuid(tag_uuid)
+            if not tag or not tag.numeracao:
+                continue
+
+            # Tag de fonte/vestibular (numeracao começa com 'V')
+            if tag.numeracao.startswith('V') and not fonte_nome:
+                fonte_nome = tag.nome.upper()
+
+            # Tag de conteúdo (numeracao começa com dígito)
+            elif tag.numeracao[0].isdigit() and not conteudo_nome:
+                conteudo_nome = tag.nome.upper()
+
+            # Se já encontrou ambos, pode parar
+            if fonte_nome and conteudo_nome:
+                break
+
+        # Montar título com as partes disponíveis
+        partes = []
+        if fonte_nome:
+            partes.append(fonte_nome)
+        if conteudo_nome:
+            partes.append(conteudo_nome)
+        if ano:
+            partes.append(str(ano))
+
+        return ' - '.join(partes) if partes else None
+
     def criar_questao(
         self,
         tipo: str,
@@ -60,21 +112,29 @@ class QuestaoService:
         Returns:
             Dict com dados da questão criada
         """
+        # Gerar título automático se não fornecido
+        titulo_final = titulo
+        if not titulo or not titulo.strip():
+            titulo_final = self._gerar_titulo_automatico(tags, ano)
+
         # Criar questão
         questao = self.questao_repo.criar_questao_completa(
             codigo_tipo=tipo,
             enunciado=enunciado,
-            titulo=titulo,
+            titulo=titulo_final,
             sigla_fonte=fonte,
             ano=ano,
             codigo_dificuldade=dificuldade,
             observacoes=observacoes
         )
 
-        # Adicionar tags
+        # Adicionar tags (suporta UUID ou nome)
         if tags:
-            for nome_tag in tags:
-                tag = self.tag_repo.buscar_por_nome(nome_tag)
+            for tag_ref in tags:
+                # Tentar buscar por UUID primeiro, depois por nome
+                tag = self.tag_repo.buscar_por_uuid(tag_ref) if isinstance(tag_ref, str) and len(tag_ref) > 20 else None
+                if not tag:
+                    tag = self.tag_repo.buscar_por_nome(tag_ref)
                 if tag:
                     questao.adicionar_tag(self.session, tag)
 
@@ -254,11 +314,19 @@ class QuestaoService:
         ano_valor = kwargs.pop('ano', None)
         dificuldade_codigo = kwargs.pop('dificuldade', None)
 
-        # Atualizar campos simples (titulo, enunciado, observacoes)
-        campos_simples = ['titulo', 'enunciado', 'observacoes']
+        # Tratar título separadamente para gerar automático se necessário
+        titulo = kwargs.pop('titulo', None)
+
+        # Atualizar campos simples (enunciado, observacoes)
+        campos_simples = ['enunciado', 'observacoes']
         for key, value in kwargs.items():
             if key in campos_simples:
                 setattr(questao, key, value)
+
+        # Gerar título automático se não fornecido
+        if titulo is None or (isinstance(titulo, str) and not titulo.strip()):
+            titulo = self._gerar_titulo_automatico(tags_ids, ano_valor)
+        questao.titulo = titulo
 
         # Atualizar relacionamentos usando UUIDs de foreign keys
         if tipo_codigo:

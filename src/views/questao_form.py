@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QComboBox, QScrollArea, QGroupBox, QRadioButton,
     QButtonGroup, QSpinBox, QTextEdit, QTabWidget, QWidget,
-    QCheckBox, QMessageBox
+    QCheckBox, QMessageBox, QInputDialog
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 import logging
@@ -18,7 +18,7 @@ from src.views.widgets import (
 )
 from src.controllers.adapters import criar_questao_controller
 from src.controllers.adapters import criar_tag_controller
-from src.application.dtos import QuestaoCreateDTO, QuestaoUpdateDTO, AlternativaDTO
+from src.application.dtos import QuestaoCreateDTO, QuestaoUpdateDTO, AlternativaDTO, TagCreateDTO
 from src.utils import ErrorHandler
 
 logger = logging.getLogger(__name__)
@@ -155,9 +155,16 @@ class QuestaoForm(QDialog):
         scroll_layout.addWidget(tab_widget)
 
         # Tags
-        tags_group = QGroupBox("Tags")
+        tags_group = QGroupBox("Tags de Conteúdo")
         tags_layout = QVBoxLayout(tags_group)
-        tags_layout.addWidget(QLabel("Selecione as tags que classificam esta questão:"))
+        tags_header_layout = QHBoxLayout()
+        tags_header_layout.addWidget(QLabel("Selecione as tags que classificam esta questão:"))
+        tags_header_layout.addStretch()
+        btn_criar_tag = QPushButton("➕ Criar Tag")
+        btn_criar_tag.setToolTip("Criar uma nova tag de conteúdo")
+        btn_criar_tag.clicked.connect(self.criar_tag_conteudo)
+        tags_header_layout.addWidget(btn_criar_tag)
+        tags_layout.addLayout(tags_header_layout)
         self.tag_tree_widget = TagTreeWidget()
         tags_layout.addWidget(self.tag_tree_widget)
         scroll_layout.addWidget(tags_group)
@@ -366,6 +373,10 @@ class QuestaoForm(QDialog):
         if not form_data.get('enunciado', '').strip():
             return False, "O enunciado da questão é obrigatório."
 
+        # Validar fonte (obrigatório)
+        if not self.fonte_combo.currentData():
+            return False, "É necessário selecionar uma fonte/banca para a questão."
+
         # Validar tags de conteúdo
         tags = form_data.get('tags', [])
         tags_conteudo = self.tag_tree_widget.get_selected_content_tags()
@@ -407,6 +418,34 @@ class QuestaoForm(QDialog):
             QMessageBox.warning(self, "Validação", erro)
             return
 
+        # Se não há título e há múltiplas tags de conteúdo, perguntar qual é a principal
+        titulo = form_data.get('titulo')
+        if not titulo or not titulo.strip():
+            content_tags = self.tag_tree_widget.get_selected_content_tags_with_names()
+            if len(content_tags) > 1:
+                # Perguntar ao usuário qual é o conteúdo principal
+                nomes = [nome for _, nome in content_tags]
+                escolhido, ok = QInputDialog.getItem(
+                    self,
+                    "Conteúdo Principal",
+                    "A questão possui múltiplos conteúdos.\nSelecione o conteúdo principal para o título:",
+                    nomes,
+                    0,
+                    False
+                )
+                if not ok:
+                    return  # Usuário cancelou
+
+                # Reordenar tags para que a principal venha primeiro
+                idx_principal = nomes.index(escolhido)
+                uuid_principal = content_tags[idx_principal][0]
+
+                # Reorganizar lista de tags: principal primeiro
+                tags = form_data['tags']
+                if uuid_principal in tags:
+                    tags.remove(uuid_principal)
+                    tags.insert(0, uuid_principal)
+
         # Campos extras que nao estao nos DTOs (para uso futuro)
         campos_extras = ['imagem_enunciado', 'escala_imagem_enunciado', 'resolucao', 'gabarito_discursiva']
         extras = {k: form_data.pop(k, None) for k in campos_extras}
@@ -416,23 +455,143 @@ class QuestaoForm(QDialog):
                 dto = QuestaoUpdateDTO(id_questao=self.questao_id, **form_data)
                 sucesso = self.controller.atualizar_questao_completa(dto)
                 msg = f"Questão {self.questao_id} atualizada com sucesso!"
+                codigo_questao = self.questao_id
             else:
                 alternativas_dto = [AlternativaDTO(**alt) for alt in form_data.pop('alternativas')]
                 dto = QuestaoCreateDTO(alternativas=alternativas_dto, **form_data)
-                id_questao = self.controller.criar_questao_completa(dto)
-                sucesso = id_questao is not None
-                msg = f"Questão criada com sucesso! ID: {id_questao}"
+                resultado = self.controller.criar_questao_completa(dto)
+                sucesso = resultado is not None
+                # Extrair código do resultado (que é um dict)
+                codigo_questao = resultado.get('codigo') if isinstance(resultado, dict) else resultado
+                msg = f"Questão criada com sucesso! Código: {codigo_questao}"
 
             if sucesso:
                 ErrorHandler.show_success(self, "Sucesso", msg)
-                self.questaoSaved.emit(self.questao_id or id_questao)
+                self.questaoSaved.emit(codigo_questao)
                 self.accept()
             else:
                 ErrorHandler.show_warning(self, "Falha", "Não foi possível salvar a questão.")
 
         except Exception as e:
             ErrorHandler.handle_exception(self, e, "Erro ao salvar questão")
-            
+
+    def criar_tag_conteudo(self):
+        """Cria uma nova tag de conteúdo, permitindo escolher se é raiz ou sub-tag."""
+        opcoes = ["Tag Raiz (nova categoria)", "Sub-tag (filha de outra tag)"]
+        opcao_escolhida, ok = QInputDialog.getItem(
+            self, "Nova Tag de Conteúdo",
+            "Selecione o tipo de criação:",
+            opcoes, 0, False
+        )
+        if not ok:
+            return
+
+        if opcao_escolhida == opcoes[0]:
+            self._criar_tag_raiz()
+        else:
+            self._criar_subtag()
+
+    def _criar_tag_raiz(self):
+        """Cria uma nova tag raiz de conteúdo."""
+        nome, ok = QInputDialog.getText(
+            self, "Nova Tag Raiz",
+            "Nome da nova tag de conteúdo:"
+        )
+        if ok and nome.strip():
+            self._executar_criacao_tag(nome.strip(), uuid_pai=None)
+
+    def _criar_subtag(self):
+        """Cria uma sub-tag, permitindo escolher a tag pai."""
+        tags_disponiveis = self._obter_tags_para_pai()
+
+        if not tags_disponiveis:
+            QMessageBox.information(
+                self, "Aviso",
+                "Não há tags de conteúdo disponíveis para criar sub-tags.\n"
+                "Crie primeiro uma tag raiz."
+            )
+            return
+
+        # Criar lista de opções com caminho completo
+        opcoes = [f"{tag['caminho']}" for tag in tags_disponiveis]
+
+        pai_escolhido, ok = QInputDialog.getItem(
+            self, "Selecionar Tag Pai",
+            "Selecione a tag pai para a nova sub-tag:",
+            opcoes, 0, False
+        )
+        if not ok:
+            return
+
+        # Encontrar UUID do pai escolhido
+        idx = opcoes.index(pai_escolhido)
+        uuid_pai = tags_disponiveis[idx]['uuid']
+
+        # Verificar se pode criar sub-tag
+        if not self.tag_controller.pode_criar_subtag(uuid_pai):
+            QMessageBox.warning(
+                self, "Aviso",
+                "Esta tag não permite a criação de sub-tags."
+            )
+            return
+
+        nome, ok = QInputDialog.getText(
+            self, "Nova Sub-tag",
+            f"Nome da nova sub-tag de '{pai_escolhido}':"
+        )
+        if ok and nome.strip():
+            self._executar_criacao_tag(nome.strip(), uuid_pai=uuid_pai)
+
+    def _obter_tags_para_pai(self):
+        """Retorna lista de tags de conteúdo que podem ser pai."""
+        resultado = []
+        tree = self.tag_tree_widget.tree
+
+        def _processar_item(item, caminho_pai=""):
+            tag_uuid = item.data(0, Qt.ItemDataRole.UserRole)
+            numeracao = item.data(0, Qt.ItemDataRole.UserRole + 1) or ""
+            nome = item.text(0)
+
+            # Apenas tags de conteúdo (numeração começa com dígito)
+            if not numeracao or not numeracao[0].isdigit():
+                return
+
+            caminho = f"{caminho_pai} > {nome}" if caminho_pai else nome
+
+            resultado.append({
+                'uuid': tag_uuid,
+                'nome': nome,
+                'numeracao': numeracao,
+                'caminho': caminho
+            })
+
+            # Processar filhos
+            for i in range(item.childCount()):
+                _processar_item(item.child(i), caminho)
+
+        # Processar todos os itens raiz da árvore
+        for i in range(tree.topLevelItemCount()):
+            _processar_item(tree.topLevelItem(i))
+
+        return resultado
+
+    def _executar_criacao_tag(self, nome: str, uuid_pai: str = None):
+        """Executa a criação da tag e atualiza a árvore."""
+        try:
+            dto = TagCreateDTO(nome=nome, id_tag_pai=uuid_pai)
+            nova_tag = self.tag_controller.criar_tag(dto, tipo='CONTEUDO')
+            if nova_tag:
+                ErrorHandler.show_success(self, "Sucesso", f"Tag '{nome}' criada com sucesso!")
+                # Recarregar árvore de tags
+                self.load_tags_tree()
+                # Auto-selecionar a nova tag
+                if nova_tag.get('uuid'):
+                    self.tag_tree_widget.set_selected_tags([nova_tag['uuid']])
+        except ValueError as ve:
+            QMessageBox.warning(self, "Erro de Validação", str(ve))
+        except Exception as e:
+            ErrorHandler.handle_exception(self, e, "Erro ao criar tag")
+
     def show_preview(self):
         QMessageBox.information(self, "Preview", "Funcionalidade de preview ainda não implementada.")
 
