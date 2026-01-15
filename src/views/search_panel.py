@@ -21,9 +21,11 @@ logger = logging.getLogger(__name__)
 
 class SearchPanel(QWidget):
     """Painel de busca e filtros de questões."""
-    questaoSelected = pyqtSignal(int)
-    editQuestao = pyqtSignal(int)
-    deleteQuestao = pyqtSignal(int)
+    questaoSelected = pyqtSignal(str)  # Emite codigo da questao
+    editQuestao = pyqtSignal(str)
+    inactivateQuestao = pyqtSignal(str)
+    reactivateQuestao = pyqtSignal(str)  # Novo sinal para reativar
+    addToListQuestao = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -93,6 +95,12 @@ class SearchPanel(QWidget):
         self.tag_tree_widget = TagTreeWidget()
         tags_layout.addWidget(self.tag_tree_widget)
         layout.addWidget(tags_group)
+
+        # Filtro de status (ativas/inativas)
+        from PyQt6.QtWidgets import QCheckBox
+        self.incluir_inativas_check = QCheckBox("Incluir questoes inativas")
+        self.incluir_inativas_check.setStyleSheet("color: #e67e22; font-weight: bold;")
+        layout.addWidget(self.incluir_inativas_check)
 
         layout.addStretch()
         
@@ -202,9 +210,11 @@ class SearchPanel(QWidget):
             else:
                 for questao_dto in questoes_dto:
                     card = QuestaoCard(questao_dto)
-                    card.editClicked.connect(self.editQuestao.emit)
-                    card.deleteClicked.connect(self.deleteQuestao.emit)
                     card.clicked.connect(self.questaoSelected.emit)
+                    card.editClicked.connect(self.editQuestao.emit)
+                    card.inactivateClicked.connect(self.inactivateQuestao.emit)
+                    card.reactivateClicked.connect(self.reactivateQuestao.emit)
+                    card.addToListClicked.connect(self.addToListQuestao.emit)
                     self.results_layout.addWidget(card)
             self.results_count_label.setText(f"Resultados: {len(questoes_dto)}")
             logger.info(f"Busca concluída: {len(questoes_dto)} questões encontradas")
@@ -218,10 +228,14 @@ class SearchPanel(QWidget):
         fonte = self.fonte_input.text().strip() or None
         ano_inicio = self.ano_de_spin.value()
         ano_fim = self.ano_ate_spin.value()
-        
+
         dificuldade_texto = self.dificuldade_combo.currentText() if "Todas" not in self.dificuldade_combo.currentText() else None
-        
+
         tags = self.tag_tree_widget.get_selected_tag_ids()
+
+        # Se incluir inativas, ativa=None (buscar todas), senão ativa=True (só ativas)
+        incluir_inativas = self.incluir_inativas_check.isChecked()
+        ativa = None if incluir_inativas else True
 
         return FiltroQuestaoDTO(
             titulo=titulo,
@@ -231,7 +245,7 @@ class SearchPanel(QWidget):
             fonte=fonte,
             dificuldade=dificuldade_texto,
             tags=tags,
-            ativa=True
+            ativa=ativa
         )
 
 from datetime import datetime

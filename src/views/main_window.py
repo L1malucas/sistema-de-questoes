@@ -292,6 +292,13 @@ class MainWindow(QMainWindow):
             self.search_panel = SearchPanel()
             self.stacked_widget.addWidget(self.search_panel)
 
+            # Conectar sinais do SearchPanel
+            self.search_panel.questaoSelected.connect(self._on_questao_visualizar)
+            self.search_panel.editQuestao.connect(self._on_questao_editar)
+            self.search_panel.inactivateQuestao.connect(self._on_questao_inativar)
+            self.search_panel.reactivateQuestao.connect(self._on_questao_reativar)
+            self.search_panel.addToListQuestao.connect(self._on_questao_adicionar_lista)
+
         self.stacked_widget.setCurrentWidget(self.search_panel)
 
     def show_nova_questao(self):
@@ -401,6 +408,113 @@ class MainWindow(QMainWindow):
         self.status_label.setText("Documentação")
         self.show_placeholder("📖 Documentação",
                              "Documentação completa do sistema estará disponível em breve")
+
+    # ========== Handlers de Questao ==========
+
+    def _on_questao_visualizar(self, codigo_questao: str):
+        """Abre preview da questao"""
+        logger.info(f"Visualizando questao: {codigo_questao}")
+        try:
+            from src.controllers.adapters import criar_questao_controller
+            controller = criar_questao_controller()
+            questao_data = controller.buscar_por_id(codigo_questao)
+            if not questao_data:
+                QMessageBox.warning(self, 'Aviso', f'Questao {codigo_questao} nao encontrada.')
+                return
+
+            from src.views.questao_preview import QuestaoPreview
+            dialog = QuestaoPreview(questao_data, parent=self)
+            dialog.exec()
+        except Exception as e:
+            ErrorHandler.handle_exception(self, e, 'Erro ao visualizar questao')
+
+    def _on_questao_editar(self, codigo_questao: str):
+        """Abre formulario de edicao da questao"""
+        logger.info(f"Editando questao: {codigo_questao}")
+        from src.views.questao_form import QuestaoForm
+        dialog = QuestaoForm(questao_id=codigo_questao, parent=self)
+        dialog.questaoSaved.connect(self._refresh_search)
+        dialog.exec()
+
+    def _on_questao_inativar(self, codigo_questao: str):
+        """Inativa uma questao (soft delete)"""
+        logger.info(f"Inativando questao: {codigo_questao}")
+        reply = QMessageBox.question(
+            self,
+            'Confirmar Inativacao',
+            f'Tem certeza que deseja inativar a questao {codigo_questao}?\n\nA questao nao sera excluida, apenas ficara inativa.',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                from src.controllers.adapters import criar_questao_controller
+                controller = criar_questao_controller()
+                controller.deletar_questao(codigo_questao)
+                QMessageBox.information(self, 'Sucesso', 'Questao inativada com sucesso!')
+                self._refresh_search()
+            except Exception as e:
+                ErrorHandler.handle_exception(self, e, 'Erro ao inativar questao')
+
+    def _on_questao_reativar(self, codigo_questao: str):
+        """Reativa uma questao inativa"""
+        logger.info(f"Reativando questao: {codigo_questao}")
+        reply = QMessageBox.question(
+            self,
+            'Confirmar Reativacao',
+            f'Tem certeza que deseja reativar a questao {codigo_questao}?',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                from src.controllers.adapters import criar_questao_controller
+                controller = criar_questao_controller()
+                controller.reativar_questao(codigo_questao)
+                QMessageBox.information(self, 'Sucesso', 'Questao reativada com sucesso!')
+                self._refresh_search()
+            except Exception as e:
+                ErrorHandler.handle_exception(self, e, 'Erro ao reativar questao')
+
+    def _on_questao_adicionar_lista(self, codigo_questao: str):
+        """Adiciona questao a uma lista existente"""
+        logger.info(f"Adicionando questao {codigo_questao} a uma lista")
+        from src.controllers.adapters import criar_lista_controller
+        controller = criar_lista_controller()
+
+        # Buscar listas disponiveis
+        listas = controller.listar_todas()
+        if not listas:
+            QMessageBox.warning(self, 'Aviso', 'Nenhuma lista cadastrada. Crie uma lista primeiro.')
+            return
+
+        # Dialogo para selecionar lista
+        from PyQt6.QtWidgets import QInputDialog
+        lista_nomes = [f"{l.get('codigo', '')} - {l.get('titulo', 'Sem titulo')}" for l in listas]
+        escolha, ok = QInputDialog.getItem(
+            self,
+            'Adicionar a Lista',
+            'Selecione a lista:',
+            lista_nomes,
+            0,
+            False
+        )
+
+        if ok and escolha:
+            try:
+                # Extrair codigo da lista selecionada
+                codigo_lista = escolha.split(' - ')[0]
+                controller.adicionar_questao(codigo_lista, codigo_questao)
+                QMessageBox.information(self, 'Sucesso', f'Questao adicionada a lista {codigo_lista}!')
+            except Exception as e:
+                ErrorHandler.handle_exception(self, e, 'Erro ao adicionar questao a lista')
+
+    def _refresh_search(self):
+        """Atualiza resultados da busca"""
+        if hasattr(self, 'search_panel'):
+            self.search_panel.perform_search()
 
     # ========== Métodos de Funcionalidade ==========
 

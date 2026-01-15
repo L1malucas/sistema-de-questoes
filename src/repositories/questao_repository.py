@@ -14,20 +14,21 @@ class QuestaoRepository(BaseRepository[Questao]):
     def __init__(self, session: Session):
         super().__init__(Questao, session)
 
-    def buscar_por_codigo(self, codigo: str) -> Optional[Questao]:
+    def buscar_por_codigo(self, codigo: str, incluir_inativos: bool = False) -> Optional[Questao]:
         """
         Busca questão por código legível
 
         Args:
             codigo: Código da questão (ex: Q-2026-0001)
+            incluir_inativos: Se True, inclui questões inativas na busca
 
         Returns:
             Questão ou None
         """
-        return self.session.query(Questao).filter_by(
-            codigo=codigo,
-            ativo=True
-        ).first()
+        query = self.session.query(Questao).filter_by(codigo=codigo)
+        if not incluir_inativos:
+            query = query.filter_by(ativo=True)
+        return query.first()
 
     def buscar_por_titulo(self, titulo: str) -> List[Questao]:
         """
@@ -173,8 +174,11 @@ class QuestaoRepository(BaseRepository[Questao]):
         query = self.session.query(Questao)
 
         # Filtro por ativa (padrão é True se não especificado)
+        # Se ativa=None, retorna todas (ativas e inativas)
         if 'ativa' in filtros:
-            query = query.filter(Questao.ativo == filtros['ativa'])
+            if filtros['ativa'] is not None:
+                query = query.filter(Questao.ativo == filtros['ativa'])
+            # Se ativa=None, não adiciona filtro (retorna todas)
         else:
             query = query.filter(Questao.ativo == True)
 
@@ -212,8 +216,8 @@ class QuestaoRepository(BaseRepository[Questao]):
 
         # Filtro por tags (AND - questão deve ter todas as tags)
         if filtros.get('tags'):
-            for tag_id in filtros['tags']:
-                query = query.join(Questao.tags).filter(Tag.id == tag_id)
+            for tag_uuid in filtros['tags']:
+                query = query.join(Questao.tags).filter(Tag.uuid == tag_uuid)
 
         # Filtro por título ou enunciado
         if filtros.get('titulo'):

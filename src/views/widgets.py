@@ -195,7 +195,8 @@ class TagTreeWidget(QWidget):
             item.setText(0, tag_dto.nome)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(0, Qt.CheckState.Unchecked)
-            item.setData(0, Qt.ItemDataRole.UserRole, tag_dto.id)
+            # Armazenar UUID para lookup correto no banco
+            item.setData(0, Qt.ItemDataRole.UserRole, tag_dto.uuid)
             if tag_dto.filhos:
                 self._add_items_recursively(item, tag_dto.filhos)
 
@@ -208,32 +209,32 @@ class TagTreeWidget(QWidget):
     def on_item_changed(self, item, column):
         self.selectionChanged.emit(self.get_selected_tag_ids())
 
-    def get_selected_tag_ids(self) -> List[int]:
-        """Retorna lista de IDs das tags selecionadas (marcadas)."""
+    def get_selected_tag_ids(self) -> List[str]:
+        """Retorna lista de UUIDs das tags selecionadas (marcadas)."""
         selected_ids = []
         iterator = QTreeWidgetItemIterator(self.tree)
         while iterator.value():
             item = iterator.value()
             if item.checkState(0) == Qt.CheckState.Checked:
-                tag_id = item.data(0, Qt.ItemDataRole.UserRole)
-                if tag_id is not None:
-                    selected_ids.append(tag_id)
+                tag_uuid = item.data(0, Qt.ItemDataRole.UserRole)
+                if tag_uuid is not None:
+                    selected_ids.append(tag_uuid)
             iterator += 1
         return selected_ids
 
-    def set_selected_tags(self, tag_ids: List[int]):
-        """Marca os checkboxes para a lista de IDs de tags fornecida."""
-        if not tag_ids:
+    def set_selected_tags(self, tag_uuids: List[str]):
+        """Marca os checkboxes para a lista de UUIDs de tags fornecida."""
+        if not tag_uuids:
             return
-        
+
         # Usar um set para busca mais rápida
-        ids_to_check = set(tag_ids)
-        
+        uuids_to_check = set(tag_uuids)
+
         iterator = QTreeWidgetItemIterator(self.tree)
         while iterator.value():
             item = iterator.value()
-            tag_id = item.data(0, Qt.ItemDataRole.UserRole)
-            if tag_id in ids_to_check:
+            tag_uuid = item.data(0, Qt.ItemDataRole.UserRole)
+            if tag_uuid in uuids_to_check:
                 # Bloquear sinais para evitar emissão massiva durante o carregamento
                 self.tree.blockSignals(True)
                 item.setCheckState(0, Qt.CheckState.Checked)
@@ -249,18 +250,21 @@ class TagTreeWidget(QWidget):
 
 class QuestaoCard(QFrame):
     """Card de preview de questão para exibição em listas."""
-    clicked = pyqtSignal(int)
-    editClicked = pyqtSignal(int)
-    deleteClicked = pyqtSignal(int)
-    addToListClicked = pyqtSignal(int) # Novo sinal para "Adicionar à Lista"
+    clicked = pyqtSignal(str)  # Emite codigo da questao
+    editClicked = pyqtSignal(str)
+    inactivateClicked = pyqtSignal(str)
+    reactivateClicked = pyqtSignal(str)  # Novo sinal para reativar
+    addToListClicked = pyqtSignal(str)
 
     def __init__(self, questao_dto, parent=None):
         super().__init__(parent)
-        # Aceitar tanto dict quanto DTO
+        # Aceitar tanto dict quanto DTO - priorizar codigo
         if isinstance(questao_dto, dict):
-            self.questao_id = questao_dto.get('id', questao_dto.get('uuid'))
+            self.questao_id = questao_dto.get('codigo') or questao_dto.get('uuid')
+            self.is_ativa = questao_dto.get('ativo', True)
         else:
-            self.questao_id = questao_dto.id
+            self.questao_id = getattr(questao_dto, 'codigo', None) or getattr(questao_dto, 'uuid', None)
+            self.is_ativa = getattr(questao_dto, 'ativo', True)
         self.init_ui(questao_dto)
 
     def _get_attr(self, obj, attr, default=None):
@@ -271,18 +275,34 @@ class QuestaoCard(QFrame):
 
     def init_ui(self, dto):
         self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
-        self.setStyleSheet("""
-            QFrame {
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                background-color: white;
-                padding: 15px;
-            }
-            QFrame:hover {
-                border-color: #1abc9c;
-                background-color: #f0fff4;
-            }
-        """)
+
+        # Estilo diferente para inativas
+        if self.is_ativa:
+            self.setStyleSheet("""
+                QFrame {
+                    border: 1px solid #ddd;
+                    border-radius: 5px;
+                    background-color: white;
+                    padding: 15px;
+                }
+                QFrame:hover {
+                    border-color: #1abc9c;
+                    background-color: #f0fff4;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QFrame {
+                    border: 2px solid #e74c3c;
+                    border-radius: 5px;
+                    background-color: #fdf2f2;
+                    padding: 15px;
+                }
+                QFrame:hover {
+                    border-color: #c0392b;
+                    background-color: #fce4e4;
+                }
+            """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         layout = QVBoxLayout(self)
@@ -293,9 +313,27 @@ class QuestaoCard(QFrame):
         # Título
         titulo = self._get_attr(dto, 'titulo') or 'Sem título'
         title_label = QLabel(titulo)
-        title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c3e50;")
+        title_style = "font-weight: bold; font-size: 14px; color: #2c3e50;"
+        if not self.is_ativa:
+            title_style = "font-weight: bold; font-size: 14px; color: #95a5a6; text-decoration: line-through;"
+        title_label.setStyleSheet(title_style)
         title_label.setWordWrap(True)
         header_layout.addWidget(title_label, 1)
+
+        # Badge de INATIVA (se aplicável)
+        if not self.is_ativa:
+            inativa_label = QLabel("INATIVA")
+            inativa_label.setStyleSheet("""
+                QLabel {
+                    background-color: #e74c3c;
+                    color: white;
+                    padding: 4px 10px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                    font-weight: bold;
+                }
+            """)
+            header_layout.addWidget(inativa_label)
 
         # Badge de tipo
         tipo = self._get_attr(dto, 'tipo', 'N/A')
@@ -341,28 +379,38 @@ class QuestaoCard(QFrame):
         # Botões de ação
         btn_layout = QHBoxLayout()
 
-        btn_visualizar = QPushButton("👁️ Visualizar")
-        btn_visualizar.setMaximumWidth(100)
-        btn_visualizar.clicked.connect(lambda: self.clicked.emit(self.questao_id)) # Conectar ao clicked do card
+        btn_visualizar = QPushButton("Visualizar")
+        btn_visualizar.setMaximumWidth(90)
+        btn_visualizar.clicked.connect(lambda: self.clicked.emit(self.questao_id))
         btn_layout.addWidget(btn_visualizar)
 
-        btn_editar = QPushButton("✏️ Editar")
-        btn_editar.setMaximumWidth(100)
+        btn_editar = QPushButton("Editar")
+        btn_editar.setMaximumWidth(70)
         btn_editar.clicked.connect(lambda: self.editClicked.emit(self.questao_id))
         btn_layout.addWidget(btn_editar)
 
-        btn_adicionar = QPushButton("➕ Adicionar à Lista")
-        btn_adicionar.setMaximumWidth(150)
-        btn_adicionar.clicked.connect(lambda: self.addToListClicked.emit(self.questao_id)) # Conectar ao novo sinal
-        btn_layout.addWidget(btn_adicionar)
+        if self.is_ativa:
+            btn_adicionar = QPushButton("Add Lista")
+            btn_adicionar.setMaximumWidth(80)
+            btn_adicionar.clicked.connect(lambda: self.addToListClicked.emit(self.questao_id))
+            btn_layout.addWidget(btn_adicionar)
 
         btn_layout.addStretch()
 
-        btn_excluir = QPushButton("🗑️")
-        btn_excluir.setMaximumWidth(40)
-        btn_excluir.setStyleSheet("QPushButton { color: #e74c3c; }")
-        btn_excluir.clicked.connect(lambda: self.deleteClicked.emit(self.questao_id))
-        btn_layout.addWidget(btn_excluir)
+        if self.is_ativa:
+            btn_inativar = QPushButton("Inativar")
+            btn_inativar.setMaximumWidth(80)
+            btn_inativar.setStyleSheet("QPushButton { color: #e67e22; font-weight: bold; }")
+            btn_inativar.setToolTip("Inativar esta questao")
+            btn_inativar.clicked.connect(lambda: self.inactivateClicked.emit(self.questao_id))
+            btn_layout.addWidget(btn_inativar)
+        else:
+            btn_reativar = QPushButton("Reativar")
+            btn_reativar.setMaximumWidth(80)
+            btn_reativar.setStyleSheet("QPushButton { color: #27ae60; font-weight: bold; }")
+            btn_reativar.setToolTip("Reativar esta questao")
+            btn_reativar.clicked.connect(lambda: self.reactivateClicked.emit(self.questao_id))
+            btn_layout.addWidget(btn_reativar)
 
         layout.addLayout(btn_layout)
 

@@ -108,13 +108,53 @@ class QuestaoControllerAdapter:
         }
         return QuestaoControllerORM.atualizar_questao(codigo, **dados)
 
+    def atualizar_questao_completa(self, dto):
+        """Atualiza questão completa a partir de DTO"""
+        questao_id = dto.id_questao
+        if isinstance(questao_id, int):
+            codigo = f"Q-2024-{questao_id:04d}"
+        else:
+            codigo = questao_id
+
+        dados = {
+            'titulo': dto.titulo,
+            'enunciado': dto.enunciado,
+            'tipo': dto.tipo,
+            'ano': dto.ano,
+            'fonte': dto.fonte,
+            'dificuldade': self._map_dificuldade(dto.id_dificuldade),
+            'observacoes': getattr(dto, 'observacoes', None),
+            'tags': getattr(dto, 'tags', []),
+            'alternativas': [
+                {
+                    'letra': alt.get('letra') if isinstance(alt, dict) else alt.letra,
+                    'texto': alt.get('texto') if isinstance(alt, dict) else alt.texto,
+                    'correta': alt.get('correta') if isinstance(alt, dict) else getattr(alt, 'correta', False)
+                }
+                for alt in (dto.alternativas if hasattr(dto, 'alternativas') else [])
+            ]
+        }
+        return QuestaoControllerORM.atualizar_questao(codigo, **dados)
+
+    def criar_questao_completa(self, dto):
+        """Alias para criar_questao"""
+        return self.criar_questao(dto)
+
     def deletar_questao(self, questao_id):
-        """Deleta questão (soft delete)"""
+        """Deleta questão (soft delete / inativar)"""
         if isinstance(questao_id, int):
             codigo = f"Q-2024-{questao_id:04d}"
         else:
             codigo = questao_id
         return QuestaoControllerORM.deletar_questao(codigo)
+
+    def reativar_questao(self, questao_id):
+        """Reativa uma questão inativa"""
+        if isinstance(questao_id, int):
+            codigo = f"Q-2024-{questao_id:04d}"
+        else:
+            codigo = questao_id
+        return QuestaoControllerORM.reativar_questao(codigo)
 
     def _map_dificuldade(self, id_dificuldade):
         """Mapeia ID de dificuldade para código"""

@@ -218,28 +218,48 @@ class QuestaoForm(QDialog):
                 self.close()
                 return
 
-            self.titulo_input.setText(dto.titulo or "")
-            self.ano_spin.setValue(dto.ano or 2026)
-            self.fonte_combo.setCurrentText(dto.fonte or "")
-            self.difficulty_selector.set_difficulty(dto.id_dificuldade)
-            self.enunciado_editor.set_text(dto.enunciado)
-            self.resolucao_editor.set_text(dto.resolucao or "")
-            self.observacoes_edit.setPlainText(dto.observacoes or "")
-            
-            if dto.tipo == 'OBJETIVA':
+            self.titulo_input.setText(getattr(dto, 'titulo', '') or "")
+            self.ano_spin.setValue(getattr(dto, 'ano', 2026) or 2026)
+            self.fonte_combo.setCurrentText(getattr(dto, 'fonte', '') or "")
+
+            # Mapear dificuldade (string) para ID
+            dificuldade = getattr(dto, 'dificuldade', None)
+            dificuldade_map = {'FACIL': 1, 'MEDIO': 2, 'DIFICIL': 3}
+            id_dificuldade = dificuldade_map.get(dificuldade, 0)
+            if id_dificuldade:
+                self.difficulty_selector.set_difficulty(id_dificuldade)
+
+            self.enunciado_editor.set_text(getattr(dto, 'enunciado', '') or '')
+            self.resolucao_editor.set_text(getattr(dto, 'resolucao', '') or "")
+            self.observacoes_edit.setPlainText(getattr(dto, 'observacoes', '') or "")
+
+            tipo = getattr(dto, 'tipo', 'OBJETIVA')
+            if tipo == 'OBJETIVA':
                 self.tipo_objetiva.setChecked(True)
-                if dto.alternativas:
-                    for i, alt_dto in enumerate(dto.alternativas):
+                alternativas = getattr(dto, 'alternativas', [])
+                if alternativas:
+                    for i, alt_dto in enumerate(alternativas):
                         if i < len(self.alternativas_widgets):
                             alt_widget = self.alternativas_widgets[i]
-                            alt_widget.texto_input.setText(alt_dto.texto)
-                            alt_widget.checkbox.setChecked(alt_dto.correta)
+                            texto = getattr(alt_dto, 'texto', '') if hasattr(alt_dto, 'texto') else alt_dto.get('texto', '')
+                            correta = getattr(alt_dto, 'correta', False) if hasattr(alt_dto, 'correta') else alt_dto.get('correta', False)
+                            alt_widget.texto_input.setText(texto)
+                            alt_widget.checkbox.setChecked(correta)
             else:
                 self.tipo_discursiva.setChecked(True)
-            
-            if dto.tags:
-                tag_ids = [tag['id_tag'] for tag in dto.tags]
-                self.tag_tree_widget.set_selected_tags(tag_ids)
+
+            # Tags - extrair UUIDs corretamente
+            tags = getattr(dto, 'tags', [])
+            if tags:
+                tag_uuids = []
+                for tag in tags:
+                    if hasattr(tag, 'uuid'):
+                        tag_uuids.append(tag.uuid)
+                    elif isinstance(tag, dict):
+                        tag_uuids.append(tag.get('uuid'))
+                    elif isinstance(tag, str):
+                        tag_uuids.append(tag)
+                self.tag_tree_widget.set_selected_tags([t for t in tag_uuids if t])
 
         except Exception as e:
             ErrorHandler.handle_exception(self, e, f"Erro ao carregar dados da questão {questao_id}")
@@ -276,7 +296,11 @@ class QuestaoForm(QDialog):
         """Valida e salva a questão (criação ou atualização)."""
         logger.info("Tentando salvar a questão...")
         form_data = self.get_form_data()
-        
+
+        # Campos extras que nao estao nos DTOs (para uso futuro)
+        campos_extras = ['imagem_enunciado', 'escala_imagem_enunciado', 'resolucao', 'gabarito_discursiva']
+        extras = {k: form_data.pop(k, None) for k in campos_extras}
+
         try:
             if self.is_editing:
                 dto = QuestaoUpdateDTO(id_questao=self.questao_id, **form_data)

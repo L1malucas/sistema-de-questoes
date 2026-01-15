@@ -158,7 +158,7 @@ class QuestaoService:
             'fonte': questao.fonte.sigla if questao.fonte else None,
             'dificuldade': questao.dificuldade.codigo if questao.dificuldade else None,
             'observacoes': questao.observacoes,
-            'tags': [tag.nome for tag in questao.tags if tag.ativo],
+            'tags': [{'uuid': tag.uuid, 'nome': tag.nome} for tag in questao.tags if tag.ativo],
             'alternativas': [
                 {
                     'uuid': alt.uuid,
@@ -201,7 +201,8 @@ class QuestaoService:
                 'ano': q.ano.ano if q.ano else None,
                 'fonte': q.fonte.sigla if q.fonte else None,
                 'dificuldade': q.dificuldade.codigo if q.dificuldade else None,
-                'tags': [tag.nome for tag in q.tags if tag.ativo]
+                'tags': [tag.nome for tag in q.tags if tag.ativo],
+                'ativo': q.ativo
             }
             for q in questoes
         ]
@@ -221,14 +222,98 @@ class QuestaoService:
         Returns:
             Dict com dados atualizados
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         questao = self.questao_repo.buscar_por_codigo(codigo)
         if not questao:
+            logger.warning(f"Questão {codigo} não encontrada")
             return None
 
-        # Atualizar campos simples
+        # Tratar tags separadamente (requerem objetos Tag, não IDs)
+        tags_ids = kwargs.pop('tags', None)
+
+        # Tratar alternativas separadamente
+        alternativas_data = kwargs.pop('alternativas', None)
+
+        # Tratar campos de relacionamento separadamente
+        tipo_codigo = kwargs.pop('tipo', None)
+        fonte_sigla = kwargs.pop('fonte', None)
+        ano_valor = kwargs.pop('ano', None)
+        dificuldade_codigo = kwargs.pop('dificuldade', None)
+
+        # Atualizar campos simples (titulo, enunciado, observacoes)
+        campos_simples = ['titulo', 'enunciado', 'observacoes']
         for key, value in kwargs.items():
-            if hasattr(questao, key) and key not in ['codigo', 'uuid']:
+            if key in campos_simples:
                 setattr(questao, key, value)
+
+        # Atualizar relacionamentos usando UUIDs de foreign keys
+        if tipo_codigo:
+            from models.orm import TipoQuestao
+            tipo = self.session.query(TipoQuestao).filter_by(codigo=tipo_codigo, ativo=True).first()
+            if tipo:
+                questao.uuid_tipo_questao = tipo.uuid
+
+        if fonte_sigla:
+            from models.orm import FonteQuestao
+            fonte = self.session.query(FonteQuestao).filter_by(sigla=fonte_sigla, ativo=True).first()
+            if fonte:
+                questao.uuid_fonte = fonte.uuid
+
+        if ano_valor:
+            from models.orm import AnoReferencia
+            ano = AnoReferencia.criar_ou_obter(self.session, ano_valor)
+            if ano:
+                questao.uuid_ano_referencia = ano.uuid
+
+        if dificuldade_codigo:
+            from models.orm import Dificuldade
+            dificuldade = self.session.query(Dificuldade).filter_by(codigo=dificuldade_codigo, ativo=True).first()
+            if dificuldade:
+                questao.uuid_dificuldade = dificuldade.uuid
+
+        # Atualizar tags se fornecidas (tags_ids são UUIDs de tags)
+        if tags_ids is not None and isinstance(tags_ids, list):
+            # Limpar tags existentes usando SQL direto
+            from models.orm import QuestaoTag
+            from sqlalchemy import delete, insert
+            self.session.execute(delete(QuestaoTag).where(QuestaoTag.c.uuid_questao == questao.uuid))
+
+            # Adicionar novas tags
+            for tag_uuid in tags_ids:
+                if tag_uuid and isinstance(tag_uuid, str):
+                    tag = self.tag_repo.buscar_por_uuid(tag_uuid)
+                    if tag:
+                        # Inserir relacionamento diretamente na tabela
+                        self.session.execute(
+                            insert(QuestaoTag).values(
+                                uuid_questao=questao.uuid,
+                                uuid_tag=tag.uuid
+                            )
+                        )
+
+        # Atualizar alternativas se fornecidas
+        tipo_atual = tipo_codigo if tipo_codigo else (questao.tipo.codigo if questao.tipo else None)
+        if alternativas_data is not None and tipo_atual == 'OBJETIVA':
+            alternativas_existentes = self.alternativa_repo.buscar_por_questao(codigo)
+
+            for alt_data in alternativas_data:
+                letra = alt_data.get('letra')
+                texto = alt_data.get('texto')
+                correta = alt_data.get('correta', False)
+
+                alt_existente = next(
+                    (a for a in alternativas_existentes if a.letra == letra),
+                    None
+                )
+
+                if alt_existente:
+                    alt_existente.texto = texto
+                    if correta:
+                        resposta = self.resposta_repo.buscar_por_questao(codigo)
+                        if resposta:
+                            resposta.uuid_alternativa_correta = alt_existente.uuid
 
         self.session.flush()
         return self.buscar_questao(codigo)
@@ -246,6 +331,24 @@ class QuestaoService:
         questao = self.questao_repo.buscar_por_codigo(codigo)
         if questao:
             questao.ativo = False
+            self.session.flush()
+            return True
+        return False
+
+    def reativar_questao(self, codigo: str) -> bool:
+        """
+        Reativa uma questão inativa
+
+        Args:
+            codigo: Código da questão
+
+        Returns:
+            True se reativada, False se não encontrada
+        """
+        # Buscar incluindo inativos
+        questao = self.questao_repo.buscar_por_codigo(codigo, incluir_inativos=True)
+        if questao:
+            questao.ativo = True
             self.session.flush()
             return True
         return False

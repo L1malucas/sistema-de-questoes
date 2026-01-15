@@ -194,6 +194,24 @@ class QuestaoControllerORM:
             return False
 
     @staticmethod
+    def reativar_questao(codigo: str) -> bool:
+        """
+        Reativa uma questão inativa
+
+        Args:
+            codigo: Código da questão (Q-2024-0001)
+
+        Returns:
+            True se reativada, False caso contrário
+        """
+        try:
+            with services.transaction() as svc:
+                return svc.questao.reativar_questao(codigo)
+        except Exception as e:
+            print(f"Erro ao reativar questão: {e}")
+            return False
+
+    @staticmethod
     def obter_estatisticas() -> Dict[str, Any]:
         """
         Retorna estatísticas sobre questões
