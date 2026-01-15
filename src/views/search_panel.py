@@ -77,10 +77,15 @@ class SearchPanel(QWidget):
         attr_filters_group = QGroupBox("Atributos")
         attr_filters_layout = QVBoxLayout(attr_filters_group)
         self.tipo_combo = QComboBox()
-        self.tipo_combo.addItems(["Todos os Tipos", "OBJETIVA", "DISCURSIVA"])
+        self.tipo_combo.addItem("Todos os Tipos", None)
+        self.tipo_combo.addItem("Objetiva", "OBJETIVA")
+        self.tipo_combo.addItem("Discursiva", "DISCURSIVA")
         attr_filters_layout.addWidget(self.tipo_combo)
         self.dificuldade_combo = QComboBox()
-        self.dificuldade_combo.addItems(["Todas as Dificuldades", "FÁCIL", "MÉDIO", "DIFÍCIL"])
+        self.dificuldade_combo.addItem("Todas as Dificuldades", None)
+        self.dificuldade_combo.addItem("Fácil", "FACIL")
+        self.dificuldade_combo.addItem("Médio", "MEDIO")
+        self.dificuldade_combo.addItem("Difícil", "DIFICIL")
         attr_filters_layout.addWidget(self.dificuldade_combo)
         ano_layout = QHBoxLayout()
         ano_layout.addWidget(QLabel("Ano de:"))
@@ -251,11 +256,11 @@ class SearchPanel(QWidget):
 
     def _get_filtros(self) -> FiltroQuestaoDTO:
         titulo = self.search_input.text().strip() or None
-        tipo = self.tipo_combo.currentText() if "Todos" not in self.tipo_combo.currentText() else None
+        tipo = self.tipo_combo.currentData()  # Retorna o código ou None
         ano_inicio = self.ano_de_spin.value()
         ano_fim = self.ano_ate_spin.value()
 
-        dificuldade_texto = self.dificuldade_combo.currentText() if "Todas" not in self.dificuldade_combo.currentText() else None
+        dificuldade_texto = self.dificuldade_combo.currentData()  # Retorna o código ou None
 
         # Coletar tags selecionadas (conteúdos)
         tags = self.tag_tree_widget.get_selected_tag_ids()
