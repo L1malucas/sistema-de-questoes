@@ -176,8 +176,7 @@ class ListaControllerAdapter:
         return ListaControllerORM.criar_lista(
             titulo=dto.titulo,
             tipo=dto.tipo,
-            cabecalho=getattr(dto, 'cabecalho', None),
-            instrucoes=getattr(dto, 'instrucoes', None),
+            formulas=getattr(dto, 'formulas', None),
             codigos_questoes=getattr(dto, 'codigos_questoes', None)
         )
 
@@ -242,8 +241,7 @@ class ListaControllerAdapter:
             codigo=codigo,
             titulo=getattr(dto, 'titulo', None),
             tipo=getattr(dto, 'tipo', None),
-            cabecalho=getattr(dto, 'cabecalho', None),
-            instrucoes=getattr(dto, 'instrucoes', None)
+            formulas=getattr(dto, 'formulas', None)
         )
 
     def deletar_lista(self, lista_id):

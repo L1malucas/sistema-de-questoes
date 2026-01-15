@@ -16,8 +16,7 @@ class Lista(BaseModel):
     codigo = Column(String(20), unique=True, nullable=False, index=True)
     titulo = Column(String(200), nullable=False, index=True)
     tipo = Column(String(50), nullable=False)  # 'PROVA', 'LISTA', 'SIMULADO'
-    cabecalho = Column(Text, nullable=True)
-    instrucoes = Column(Text, nullable=True)
+    formulas = Column(Text, nullable=True)  # Caixa de fórmulas (LaTeX)
     data_modificacao = Column(DateTime, onupdate=datetime.utcnow, nullable=True)
 
     # Relationship com questões (N:N via lista_questao)

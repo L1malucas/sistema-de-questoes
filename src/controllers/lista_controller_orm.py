@@ -17,8 +17,7 @@ class ListaControllerORM:
     def criar_lista(
         titulo: str,
         tipo: str = 'LISTA',
-        cabecalho: Optional[str] = None,
-        instrucoes: Optional[str] = None,
+        formulas: Optional[str] = None,
         codigos_questoes: Optional[List[str]] = None
     ) -> Optional[Dict[str, Any]]:
         """
@@ -27,8 +26,7 @@ class ListaControllerORM:
         Args:
             titulo: Título da lista
             tipo: 'PROVA', 'LISTA' ou 'SIMULADO' (padrão: 'LISTA')
-            cabecalho: Cabeçalho personalizado opcional
-            instrucoes: Instruções gerais opcionais
+            formulas: Caixa de fórmulas LaTeX opcional
             codigos_questoes: Lista de códigos de questões (Q-2024-0001) para adicionar
 
         Returns:
@@ -38,7 +36,6 @@ class ListaControllerORM:
             lista = ListaControllerORM.criar_lista(
                 titulo='Prova de Geografia - 2024',
                 tipo='PROVA',
-                instrucoes='Responda todas as questões',
                 codigos_questoes=['Q-2024-0001', 'Q-2024-0002']
             )
             print(f"Lista criada: {lista['codigo']}")  # LST-2026-0001
@@ -48,8 +45,7 @@ class ListaControllerORM:
                 return svc.lista.criar_lista(
                     titulo=titulo,
                     tipo=tipo,
-                    cabecalho=cabecalho,
-                    instrucoes=instrucoes,
+                    formulas=formulas,
                     codigos_questoes=codigos_questoes
                 )
         except Exception as e:
@@ -160,8 +156,7 @@ class ListaControllerORM:
         codigo: str,
         titulo: str = None,
         tipo: str = None,
-        cabecalho: str = None,
-        instrucoes: str = None
+        formulas: str = None
     ):
         """
         Atualiza uma lista
@@ -170,8 +165,7 @@ class ListaControllerORM:
             codigo: Codigo da lista (LST-2026-0001)
             titulo: Novo titulo
             tipo: Novo tipo
-            cabecalho: Novo cabecalho
-            instrucoes: Novas instrucoes
+            formulas: Nova caixa de formulas (LaTeX)
 
         Returns:
             Dict com dados atualizados ou None
@@ -182,8 +176,7 @@ class ListaControllerORM:
                     codigo=codigo,
                     titulo=titulo,
                     tipo=tipo,
-                    cabecalho=cabecalho,
-                    instrucoes=instrucoes
+                    formulas=formulas
                 )
         except Exception as e:
             print(f"Erro ao atualizar lista: {e}")

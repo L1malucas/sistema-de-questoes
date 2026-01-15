@@ -62,18 +62,14 @@ class ListaForm(QDialog):
         info_layout.addRow(QLabel("Tipo:"), self.tipo_input)
         layout.addWidget(info_group)
 
-        # Cabeçalho e instruções
-        text_group = QGroupBox("Cabeçalho e Instruções (para exportação)")
-        text_layout = QVBoxLayout(text_group)
-        self.cabecalho_edit = QTextEdit()
-        self.cabecalho_edit.setPlaceholderText("Nome da Instituição\nDisciplina\nData...")
-        text_layout.addWidget(QLabel("Cabeçalho:"))
-        text_layout.addWidget(self.cabecalho_edit)
-        self.instrucoes_edit = QTextEdit()
-        self.instrucoes_edit.setPlaceholderText("Instruções para os alunos...")
-        text_layout.addWidget(QLabel("Instruções:"))
-        text_layout.addWidget(self.instrucoes_edit)
-        layout.addWidget(text_group)
+        # Caixa de Fórmulas
+        formulas_group = QGroupBox("Caixa de Fórmulas (opcional)")
+        formulas_layout = QVBoxLayout(formulas_group)
+        self.formulas_edit = QTextEdit()
+        self.formulas_edit.setPlaceholderText("Insira fórmulas em LaTeX que serão exibidas na exportação...\nEx: $a^2 + b^2 = c^2$")
+        self.formulas_edit.setMaximumHeight(100)
+        formulas_layout.addWidget(self.formulas_edit)
+        layout.addWidget(formulas_group)
 
         # Questões
         questoes_group = QGroupBox("Questões da Lista")
@@ -114,8 +110,7 @@ class ListaForm(QDialog):
 
             self.titulo_input.setText(getattr(lista_dto, 'titulo', '') or '')
             self.tipo_input.setText(getattr(lista_dto, 'tipo', '') or '')
-            self.cabecalho_edit.setPlainText(getattr(lista_dto, 'cabecalho', '') or '')
-            self.instrucoes_edit.setPlainText(getattr(lista_dto, 'instrucoes', '') or '')
+            self.formulas_edit.setPlainText(getattr(lista_dto, 'formulas', '') or '')
             self.questoes_na_lista = getattr(lista_dto, 'questoes', []) or []
             self._popular_lista_questoes()
         except Exception as e:
@@ -199,16 +194,14 @@ class ListaForm(QDialog):
                     id_lista=self.lista_id,
                     titulo=titulo,
                     tipo=self.tipo_input.text().strip() or None,
-                    cabecalho=self.cabecalho_edit.toPlainText().strip() or None,
-                    instrucoes=self.instrucoes_edit.toPlainText().strip() or None
+                    formulas=self.formulas_edit.toPlainText().strip() or None
                 )
                 self.controller.atualizar_lista(dto)
             else:
                 dto = ListaCreateDTO(
                     titulo=titulo,
                     tipo=self.tipo_input.text().strip() or None,
-                    cabecalho=self.cabecalho_edit.toPlainText().strip() or None,
-                    instrucoes=self.instrucoes_edit.toPlainText().strip() or None
+                    formulas=self.formulas_edit.toPlainText().strip() or None
                 )
                 resultado = self.controller.criar_lista(dto)
                 if not resultado:

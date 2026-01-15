@@ -87,8 +87,7 @@ class ListaCreateDTO:
     """DTO para criação de lista"""
     titulo: str
     tipo: str = 'LISTA'
-    cabecalho: Optional[str] = None
-    instrucoes: Optional[str] = None
+    formulas: Optional[str] = None
     codigos_questoes: List[str] = field(default_factory=list)
 
 
@@ -98,8 +97,7 @@ class ListaUpdateDTO:
     id_lista: int
     titulo: str
     tipo: str = 'LISTA'
-    cabecalho: Optional[str] = None
-    instrucoes: Optional[str] = None
+    formulas: Optional[str] = None
 
 
 @dataclass
@@ -110,6 +108,7 @@ class ListaResponseDTO:
     titulo: str
     tipo: str
     total_questoes: int
+    formulas: Optional[str] = None
     questoes: List[QuestaoResponseDTO] = field(default_factory=list)
     tags_relacionadas: List[str] = field(default_factory=list)
 
@@ -122,6 +121,7 @@ class ListaResponseDTO:
             titulo=data.get('titulo', ''),
             tipo=data.get('tipo', ''),
             total_questoes=data.get('total_questoes', 0),
+            formulas=data.get('formulas'),
             questoes=[],
             tags_relacionadas=data.get('tags_relacionadas', [])
         )

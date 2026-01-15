@@ -17,9 +17,9 @@ class ListaRepository(BaseRepository[Lista]):
     def buscar_por_tipo(self, tipo: str) -> List[Lista]:
         return self.session.query(Lista).filter_by(tipo=tipo, ativo=True).order_by(Lista.data_criacao.desc()).all()
     
-    def criar_lista(self, titulo: str, tipo: str = 'LISTA', cabecalho: str = None, instrucoes: str = None) -> Lista:
+    def criar_lista(self, titulo: str, tipo: str = 'LISTA', formulas: str = None) -> Lista:
         codigo = CodigoGenerator.gerar_codigo_lista(self.session)
-        lista = Lista(codigo=codigo, titulo=titulo, tipo=tipo, cabecalho=cabecalho, instrucoes=instrucoes)
+        lista = Lista(codigo=codigo, titulo=titulo, tipo=tipo, formulas=formulas)
         self.session.add(lista)
         self.session.flush()
         return lista

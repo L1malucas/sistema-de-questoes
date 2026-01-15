@@ -18,8 +18,7 @@ class ListaService:
         self,
         titulo: str,
         tipo: str = 'LISTA',
-        cabecalho: Optional[str] = None,
-        instrucoes: Optional[str] = None,
+        formulas: Optional[str] = None,
         codigos_questoes: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
@@ -28,14 +27,13 @@ class ListaService:
         Args:
             titulo: Título da lista
             tipo: PROVA, LISTA ou SIMULADO
-            cabecalho: Cabeçalho personalizado
-            instrucoes: Instruções gerais
+            formulas: Caixa de fórmulas (LaTeX)
             codigos_questoes: Lista de códigos de questões para adicionar
 
         Returns:
             Dict com dados da lista criada
         """
-        lista = self.lista_repo.criar_lista(titulo, tipo, cabecalho, instrucoes)
+        lista = self.lista_repo.criar_lista(titulo, tipo, formulas)
 
         # Adicionar questões se fornecidas
         if codigos_questoes:
@@ -116,8 +114,7 @@ class ListaService:
             'uuid': lista.uuid,
             'titulo': lista.titulo,
             'tipo': lista.tipo,
-            'cabecalho': lista.cabecalho,
-            'instrucoes': lista.instrucoes,
+            'formulas': lista.formulas,
             'questoes': questoes_data,
             'tags_relacionadas': [tag.nome for tag in tags],
             'total_questoes': lista.contar_questoes()
@@ -176,8 +173,7 @@ class ListaService:
         codigo: str,
         titulo: Optional[str] = None,
         tipo: Optional[str] = None,
-        cabecalho: Optional[str] = None,
-        instrucoes: Optional[str] = None
+        formulas: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Atualiza uma lista
@@ -186,8 +182,7 @@ class ListaService:
             codigo: Codigo da lista
             titulo: Novo titulo
             tipo: Novo tipo
-            cabecalho: Novo cabecalho
-            instrucoes: Novas instrucoes
+            formulas: Nova caixa de formulas (LaTeX)
 
         Returns:
             Dict com dados atualizados ou None
@@ -200,10 +195,8 @@ class ListaService:
             lista.titulo = titulo
         if tipo is not None:
             lista.tipo = tipo
-        if cabecalho is not None:
-            lista.cabecalho = cabecalho
-        if instrucoes is not None:
-            lista.instrucoes = instrucoes
+        if formulas is not None:
+            lista.formulas = formulas
 
         self.session.flush()
 
@@ -211,8 +204,7 @@ class ListaService:
             'codigo': lista.codigo,
             'titulo': lista.titulo,
             'tipo': lista.tipo,
-            'cabecalho': lista.cabecalho,
-            'instrucoes': lista.instrucoes
+            'formulas': lista.formulas
         }
 
     def deletar_lista(self, codigo: str) -> bool:

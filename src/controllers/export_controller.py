@@ -54,11 +54,14 @@ class ExportController:
 
         # 3. Substituir placeholders do cabecalho
         template_content = template_content.replace("[TITULO_LISTA]", escape_latex(lista_dados['titulo']))
-        template_content = template_content.replace("[NOME_ESCOLA]", escape_latex(lista_dados.get('cabecalho', '') or ''))
-        template_content = template_content.replace("[NOME_PROFESSOR]", "")
-        template_content = template_content.replace("[DATA]", "")
-        template_content = template_content.replace("[TURMA]", "")
-        template_content = template_content.replace("[INSTRUCOES]", escape_latex(lista_dados.get('instrucoes', '') or ''))
+
+        # Formulas (caixa de fórmulas opcional)
+        formulas = lista_dados.get('formulas', '') or ''
+        if formulas:
+            formulas_block = f"\\begin{{tcolorbox}}[title=Fórmulas]\n{formulas}\n\\end{{tcolorbox}}\n\\vspace{{0.5cm}}"
+            template_content = template_content.replace("% [FORMULAS_AQUI]", formulas_block)
+        else:
+            template_content = template_content.replace("% [FORMULAS_AQUI]", "")
 
         # 4. Gerar o bloco de questoes
         questoes_latex = []

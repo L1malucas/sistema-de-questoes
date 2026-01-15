@@ -1,6 +1,6 @@
 % ============================================
 % TEMPLATE PADRÃO - SISTEMA DE QUESTÕES
-% Versão: 1.0.1
+% Versão: 2.0.0
 % ============================================
 
 \documentclass[12pt,a4paper]{article}
@@ -21,8 +21,8 @@
 % Listas personalizadas
 \usepackage{enumitem}
 
-% Multicolunas (opcional)
-\usepackage{multicol}
+% Caixa de fórmulas
+\usepackage{tcolorbox}
 
 % Cabeçalho e rodapé
 \usepackage{fancyhdr}
@@ -54,25 +54,15 @@
 
 \begin{document}
 
-% CABEÇALHO PERSONALIZADO
+% TÍTULO DA LISTA
 \begin{center}
     {\Large\textbf{[TITULO_LISTA]}}
 \end{center}
 
 \vspace{0.5cm}
 
-\noindent
-\textbf{[NOME_ESCOLA]} \\
-Professor: [NOME_PROFESSOR] \\
-Data: [DATA] \hfill Turma: [TURMA]
-
-\vspace{0.5cm}
-
-% INSTRUÇÕES
-\noindent
-\textit{[INSTRUCOES]}
-
-\vspace{1cm}
+% CAIXA DE FÓRMULAS (opcional)
+% [FORMULAS_AQUI]
 
 % ============================================
 % QUESTÕES
@@ -81,25 +71,6 @@ Data: [DATA] \hfill Turma: [TURMA]
 \begin{enumerate}[leftmargin=*]
 
 % [QUESTOES_AQUI]
-% Formato para cada questão:
-%
-% \item \textbf{([ANO] - [FONTE])}
-%
-% [ENUNCIADO]
-%
-% \begin{center}
-%     \includegraphics[scale=0.7]{[CAMINHO_IMAGEM]}
-% \end{center}
-%
-% \begin{enumerate}[label=\Alph*)]
-%     \item [ALTERNATIVA A]
-%     \item [ALTERNATIVA B]
-%     \item [ALTERNATIVA C]
-%     \item [ALTERNATIVA D]
-%     \item [ALTERNATIVA E]
-% \end{enumerate}
-%
-% \vspace{[ESPACO_RESPOSTA]cm}
 
 \end{enumerate}
 
@@ -113,7 +84,6 @@ Data: [DATA] \hfill Turma: [TURMA]
 
 \begin{enumerate}[leftmargin=*]
 % [GABARITO_AQUI]
-% Formato: \item Questão 1: [LETRA_CORRETA]
 \end{enumerate}
 
 % ============================================
@@ -126,10 +96,6 @@ Data: [DATA] \hfill Turma: [TURMA]
 
 \begin{enumerate}[leftmargin=*]
 % [RESOLUCOES_AQUI]
-% Formato:
-% \item \textbf{Questão 1:}
-%
-% [RESOLUCAO_LATEX]
 \end{enumerate}
 
 \end{document}
