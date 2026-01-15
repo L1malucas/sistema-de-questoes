@@ -64,16 +64,18 @@ class ExportController:
         questoes_latex = []
         for i, questao in enumerate(lista_dados['questoes'], 1):
             enunciado = escape_latex(questao.get('enunciado', ''))
-            fonte = escape_latex(questao.get('fonte') or '')
-            ano = escape_latex(str(questao.get('ano') or ''))
+            fonte = questao.get('fonte') or ''
+            ano = str(questao.get('ano') or '')
 
-            # Cabecalho da questao
-            if fonte or ano:
-                item = f"\\item \\textbf{{({ano} - {fonte})}}\n\n"
+            # Cabecalho da questao: (FONTE - ANO) Enunciado (na mesma linha)
+            if fonte and ano:
+                item = f"\\item \\textbf{{({fonte} - {ano})}} {enunciado}\n\n"
+            elif fonte:
+                item = f"\\item \\textbf{{({fonte})}} {enunciado}\n\n"
+            elif ano:
+                item = f"\\item \\textbf{{({ano})}} {enunciado}\n\n"
             else:
-                item = "\\item "
-
-            item += f"{enunciado}\n\n"
+                item = f"\\item {enunciado}\n\n"
 
             # Adicionar alternativas (se objetiva)
             alternativas = questao.get('alternativas', [])

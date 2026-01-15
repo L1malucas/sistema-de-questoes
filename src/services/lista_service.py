@@ -74,21 +74,33 @@ class ListaService:
         for q in lista.questoes:
             if not q.ativo:
                 continue
+
+            # Buscar fonte: primeiro tenta o campo fonte, depois nas tags (numeracao começa com V)
+            fonte_nome = None
+            if q.fonte:
+                fonte_nome = q.fonte.sigla
+            else:
+                # Buscar nas tags de vestibular
+                for tag in q.tags:
+                    if tag.ativo and tag.numeracao and tag.numeracao.startswith('V'):
+                        fonte_nome = tag.nome
+                        break
+
             questao_dict = {
                 'codigo': q.codigo,
                 'titulo': q.titulo,
                 'tipo': q.tipo.codigo if q.tipo else None,
                 'enunciado': q.enunciado,
-                'fonte': q.fonte.sigla if q.fonte else None,
+                'fonte': fonte_nome,
                 'ano': q.ano.ano if q.ano else None,
-                'alternativas': [
+                'alternativas': sorted([
                     {
                         'uuid': alt.uuid,
                         'letra': alt.letra,
                         'texto': alt.texto
                     }
-                    for alt in q.alternativas if alt.ativo
-                ] if hasattr(q, 'alternativas') else [],
+                    for alt in q.alternativas
+                ], key=lambda x: x['letra']) if hasattr(q, 'alternativas') and q.alternativas else [],
                 'resposta': None
             }
             # Buscar resposta se existir

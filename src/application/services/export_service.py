@@ -13,67 +13,56 @@ logger = logging.getLogger(__name__)
 def escape_latex(text: str) -> str:
     """
     Escapa caracteres especiais do LaTeX em uma string,
-    preservando blocos matematicos ($...$, $$...$$, \\[...\\], \\(...\\)).
+    preservando blocos matematicos e comandos LaTeX.
     """
     if not isinstance(text, str):
         return text
 
-    # Padroes para blocos matematicos (ordem importa - $$ antes de $)
-    math_patterns = [
-        (r'\$\$.*?\$\$', 'MATHBLOCK_DISPLAY'),      # $$...$$
-        (r'\$[^\$]+?\$', 'MATHBLOCK_INLINE'),        # $...$
-        (r'\\\[.*?\\\]', 'MATHBLOCK_BRACKET'),       # \[...\]
-        (r'\\\(.*?\\\)', 'MATHBLOCK_PAREN'),         # \(...\)
-        (r'\\begin\{equation\}.*?\\end\{equation\}', 'MATHBLOCK_EQ'),  # \begin{equation}...\end{equation}
-        (r'\\begin\{align\}.*?\\end\{align\}', 'MATHBLOCK_ALIGN'),     # \begin{align}...\end{align}
-        (r'\\begin\{align\*\}.*?\\end\{align\*\}', 'MATHBLOCK_ALIGNSTAR'),  # \begin{align*}...\end{align*}
-        (r'\\frac\{[^}]*\}\{[^}]*\}', 'MATHBLOCK_FRAC'),  # \frac{...}{...}
-        (r'\\sqrt\{[^}]*\}', 'MATHBLOCK_SQRT'),            # \sqrt{...}
-        (r'\\sqrt\[[^\]]*\]\{[^}]*\}', 'MATHBLOCK_SQRTN'), # \sqrt[n]{...}
-    ]
+    # Usar um contador único para placeholders
+    placeholder_counter = [0]
+    preserved_blocks = {}
 
-    # Extrair e armazenar blocos matematicos
-    math_blocks = []
+    def save_block(match):
+        key = f'__PRESERVED_{placeholder_counter[0]}__'
+        preserved_blocks[key] = match.group(0)
+        placeholder_counter[0] += 1
+        return key
 
-    def save_math_block(match):
-        math_blocks.append(match.group(0))
-        return f'__MATH_{len(math_blocks)-1}__'
+    # 1. Preservar blocos matemáticos display mode ($$...$$)
+    text = re.sub(r'\$\$.*?\$\$', save_block, text, flags=re.DOTALL)
 
-    # Substituir blocos matematicos por placeholders
-    for pattern, _ in math_patterns:
-        text = re.sub(pattern, save_math_block, text, flags=re.DOTALL)
+    # 2. Preservar blocos matemáticos inline ($...$)
+    # Padrão mais flexível: $ seguido de conteúdo que não começa com espaço+dígito
+    text = re.sub(r'\$(?!\s*\d)[^\$]+\$', save_block, text, flags=re.DOTALL)
 
-    # Tambem preservar comandos LaTeX comuns (começando com \)
-    latex_commands = []
+    # 3. Preservar ambientes matemáticos \[...\] e \(...\)
+    text = re.sub(r'\\\[.*?\\\]', save_block, text, flags=re.DOTALL)
+    text = re.sub(r'\\\(.*?\\\)', save_block, text, flags=re.DOTALL)
 
-    def save_latex_cmd(match):
-        latex_commands.append(match.group(0))
-        return f'__LATEXCMD_{len(latex_commands)-1}__'
+    # 4. Preservar ambientes begin/end
+    text = re.sub(r'\\begin\{[^}]+\}.*?\\end\{[^}]+\}', save_block, text, flags=re.DOTALL)
 
-    # Preservar comandos LaTeX como \textbf{}, \textit{}, \underline{}, etc.
-    text = re.sub(r'\\[a-zA-Z]+(?:\{[^}]*\})*', save_latex_cmd, text)
+    # 5. Preservar comandos LaTeX (ex: \alpha, \textbf{...}, \frac{}{})
+    # Inclui comandos com múltiplos argumentos {}
+    text = re.sub(r'\\[a-zA-Z]+(?:\s*\{[^}]*\})*', save_block, text)
 
-    # Agora escapar caracteres especiais no texto restante
-    # Nao escapar backslash aqui pois ja preservamos os comandos LaTeX
+    # 6. Escapar caracteres especiais restantes
+    # Apenas caracteres que causam erro fora de math mode
     replacements = [
         ('&', r'\&'),
         ('%', r'\%'),
         ('#', r'\#'),
-        ('~', r'\textasciitilde{}'),
-        ('<', r'\textless{}'),
-        ('>', r'\textgreater{}'),
     ]
 
     for char, replacement in replacements:
         text = text.replace(char, replacement)
 
-    # Restaurar comandos LaTeX
-    for i, cmd in enumerate(latex_commands):
-        text = text.replace(f'__LATEXCMD_{i}__', cmd)
+    # 7. Escapar $ apenas quando seguido de espaço ou dígito (provavelmente moeda)
+    text = re.sub(r'\$(?=\s|\d)', r'\\$', text)
 
-    # Restaurar blocos matematicos
-    for i, block in enumerate(math_blocks):
-        text = text.replace(f'__MATH_{i}__', block)
+    # 8. Restaurar todos os blocos preservados
+    for key, value in preserved_blocks.items():
+        text = text.replace(key, value)
 
     return text
 
