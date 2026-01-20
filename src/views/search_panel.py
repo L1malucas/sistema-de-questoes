@@ -290,4 +290,15 @@ class SearchPanel(QWidget):
             ativa=ativa
         )
 
+    def filter_by_tag(self, tag_uuid: str):
+        """Filtra questões por uma tag específica (chamado pela sidebar)"""
+        logger.info(f"Filtrando por tag: {tag_uuid}")
+        # Limpar filtros existentes
+        self.clear_filters()
+        # Selecionar a tag na árvore (se encontrá-la)
+        self.tag_tree_widget.set_selected_tags([tag_uuid])
+        # Executar busca
+        self.perform_search()
+
+
 from datetime import datetime
