@@ -1,181 +1,273 @@
-"""
-Component: Sidebar
-Barra lateral com árvore de tags hierárquica
-Baseado no design do mathbank_sidebar.py
-"""
-
+# src/views/components/layout/sidebar.py
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QScrollArea
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
+    QTreeWidget, QTreeWidgetItem, QApplication,
+    QSpacerItem, QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from typing import List
-import logging
+from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from PyQt6.QtGui import QIcon
+from src.views.design.constants import Color, Spacing, Typography, Dimensions
+from src.views.design.enums import ActionEnum
+from src.views.components.common.buttons import IconButton, PrimaryButton, SecondaryButton # Reusing buttons
 
-from src.application.dtos.tag_dto import TagResponseDTO
+class TagTreeItem(QTreeWidgetItem):
+    """
+    Custom tree widget item for a tag, supporting expansion and an optional checkbox.
+    """
+    def __init__(self, parent, name, uuid, level=0, selectable=True, is_checked=False):
+        super().__init__(parent, [name])
+        self.uuid = uuid
+        self.name = name
+        self.level = level
+        self.selectable = selectable
 
-logger = logging.getLogger(__name__)
+        if selectable:
+            self.setFlags(self.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable)
+            self.setCheckState(0, Qt.CheckState.Checked if is_checked else Qt.CheckState.Unchecked)
+        else:
+            self.setFlags(self.flags() | Qt.ItemFlag.ItemIsSelectable) # Can still select the item, but no checkbox
+
+        # Set font based on level
+        font = self.font(0)
+        if level == 0:
+            font.setPointSize(font.pointSize() + 2) # Larger for top-level
+            font.setBold(True)
+        elif level == 1:
+            font.setBold(True)
+        self.setFont(0, font)
+
+        # Apply styles via objectName if possible, or directly for padding/indentation
+        # self.treeWidget().setStyleSheet(f"""
+        #     QTreeWidget::item {{
+        #         padding-left: {level * Spacing.MD}px;
+        #     }}
+        # """) # This applies to all items. Better to handle through custom delegate or tree config
 
 
-class Sidebar(QWidget):
-    """Barra lateral com árvore de tags e ações"""
+class TagTreeView(QTreeWidget):
+    """
+    Hierarchical tree view for tags.
+    """
+    tag_selected = pyqtSignal(str, bool) # Emits (tag_uuid, is_checked)
+    item_expanded = pyqtSignal(str) # Emits (tag_uuid)
+    item_collapsed = pyqtSignal(str) # Emits (tag_uuid)
 
-    tagSelected = pyqtSignal(str, str)  # uuid, nome
-    exportClicked = pyqtSignal()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("tag_tree_view")
+        self.setHeaderHidden(True)
+        self.setRootIsDecorated(False) # Hide root handles
+        self.setIndentation(Spacing.LG)
+        self.setAnimated(True) # Smooth expansion/collapse
+
+        self.itemChanged.connect(self._on_item_changed)
+        self.itemClicked.connect(self._on_item_clicked)
+        self.itemExpanded.connect(lambda item: self.item_expanded.emit(item.uuid))
+        self.itemCollapsed.connect(lambda item: self.item_collapsed.emit(item.uuid))
+
+        # Placeholder data - replace with actual data fetching logic
+        self._load_placeholder_tags()
+
+        self.setStyleSheet(f"""
+            QTreeWidget#tag_tree_view {{
+                background-color: transparent;
+                border: none;
+                font-size: {Typography.FONT_SIZE_MD};
+                color: {Color.DARK_TEXT};
+                show-decoration-selected: 1; /* Make selection visible */
+            }}
+            QTreeWidget#tag_tree_view::item {{
+                padding: {Spacing.XS}px 0;
+                margin: {Spacing.XXS}px 0;
+                border-radius: {Dimensions.BORDER_RADIUS_SM};
+            }}
+            QTreeWidget#tag_tree_view::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_2};
+                color: {Color.PRIMARY_BLUE};
+            }}
+            QTreeWidget#tag_tree_view::item:hover {{
+                background-color: {Color.BORDER_LIGHT};
+            }}
+            QTreeWidget#tag_tree_view::branch {{
+                background: transparent;
+            }}
+            QTreeWidget#tag_tree_view::branch:open {{
+                image: url(resources/icons/arrow_down.png); /* Placeholder */
+            }}
+            QTreeWidget#tag_tree_view::branch:closed,
+            QTreeWidget#tag_tree_view::branch:has-children:!open {{
+                image: url(resources/icons/arrow_right.png); /* Placeholder */
+            }}
+        """)
+
+    def _load_placeholder_tags(self):
+        # Example hierarchical data
+        algebra = TagTreeItem(self, "1. Algebra", "uuid-algebra", level=0, selectable=True, is_checked=True)
+        functions = TagTreeItem(algebra, "1.1 Functions", "uuid-functions", level=1, selectable=True)
+        TagTreeItem(functions, "1.1.1 Linear", "uuid-linear", level=2, selectable=True)
+        TagTreeItem(functions, "1.1.1 Quadratic", "uuid-quadratic", level=2, selectable=True)
+        equations = TagTreeItem(algebra, "1.2 Equations", "uuid-equations", level=1, selectable=True)
+        TagTreeItem(equations, "1.2.1 Polynomial", "uuid-polynomial", level=2, selectable=True)
+        TagTreeItem(equations, "1.2.2 Trigonometric", "uuid-trigonometric", level=2, selectable=True)
+
+        geometry = TagTreeItem(self, "2. Geometry", "uuid-geometry", level=0, selectable=True)
+        euclidean = TagTreeItem(geometry, "2.1 Euclidean", "uuid-euclidean", level=1, selectable=True)
+        TagTreeItem(euclidean, "2.1.1 Triangles", "uuid-triangles", level=2, selectable=True)
+
+        calculus = TagTreeItem(self, "3. Calculus", "uuid-calculus", level=0, selectable=True)
+        differential = TagTreeItem(calculus, "3.1 Differential", "uuid-differential", level=1, selectable=True)
+        integral = TagTreeItem(calculus, "3.2 Integral", "uuid-integral", level=1, selectable=True)
+
+        self.expandItem(algebra) # Expand Algebra by default
+
+    def _on_item_changed(self, item: TagTreeItem, column: int):
+        if item.selectable and column == 0:
+            is_checked = item.checkState(column) == Qt.CheckState.Checked
+            self.tag_selected.emit(item.uuid, is_checked)
+
+    def _on_item_clicked(self, item: TagTreeItem, column: int):
+        if not item.selectable: # If not selectable, toggle expansion
+            if item.isExpanded():
+                self.collapseItem(item)
+            else:
+                self.expandItem(item)
+        # If selectable, itemChanged handles the checkbox click.
+        # This click handler can be used for other actions like opening a tag edit view.
+
+
+class Sidebar(QFrame):
+    """
+    Main sidebar component for navigation and filtering.
+    """
+    export_clicked = pyqtSignal()
+    help_clicked = pyqtSignal()
+    tag_filter_changed = pyqtSignal(str, bool) # Emits (tag_uuid, is_checked)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("sidebar")
-        self.setFixedWidth(288)
-        self.selected_tag_uuid = None
-        self.init_ui()
+        self.setFixedWidth(Dimensions.SIDEBAR_WIDTH)
 
-    def init_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(24)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(Spacing.LG, Spacing.LG, Spacing.LG, Spacing.LG)
+        main_layout.setSpacing(Spacing.LG)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Header
         header_layout = QHBoxLayout()
-
-        header_info = QVBoxLayout()
-        header_info.setSpacing(4)
-
-        title = QLabel("CONTEÚDOS")
-        title.setObjectName("sidebar_title")
-
-        subtitle = QLabel("Tags Hierárquicas")
-        subtitle.setObjectName("sidebar_subtitle")
-
-        header_info.addWidget(title)
-        header_info.addWidget(subtitle)
-
-        header_layout.addLayout(header_info)
+        header_title = QLabel("MATH CONTENT", self)
+        header_title.setObjectName("sidebar_title")
+        header_title.setStyleSheet(f"""
+            QLabel#sidebar_title {{
+                font-size: {Typography.FONT_SIZE_SM};
+                font-weight: {Typography.FONT_WEIGHT_BOLD};
+                color: {Color.DARK_TEXT};
+                letter-spacing: 1px;
+            }}
+        """)
+        header_layout.addWidget(header_title)
         header_layout.addStretch()
+        # Expand/Collapse button (placeholder icon)
+        expand_button = IconButton(icon_path="images/icons/collapse.png", size=QSize(16,16), parent=self)
+        expand_button.setToolTip("Expand/Collapse Sidebar")
+        header_layout.addWidget(expand_button)
+        main_layout.addLayout(header_layout)
 
-        expand_btn = QLabel("⋮")
-        expand_btn.setObjectName("sidebar_icon")
-        header_layout.addWidget(expand_btn)
+        # Hierarchical Tags
+        tags_subtitle = QLabel("Hierarchical Tags", self)
+        tags_subtitle.setObjectName("sidebar_subtitle")
+        tags_subtitle.setStyleSheet(f"""
+            QLabel#sidebar_subtitle {{
+                font-size: {Typography.FONT_SIZE_XS};
+                color: {Color.GRAY_TEXT};
+            }}
+        """)
+        main_layout.addWidget(tags_subtitle)
 
-        layout.addLayout(header_layout)
+        self.tag_tree_view = TagTreeView(self)
+        self.tag_tree_view.tag_selected.connect(self.tag_filter_changed.emit)
+        main_layout.addWidget(self.tag_tree_view)
 
-        # Árvore de navegação
-        self.tree_scroll = QScrollArea()
-        self.tree_scroll.setWidgetResizable(True)
-        self.tree_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        # Footer Actions
+        footer_frame = QFrame(self)
+        footer_frame.setObjectName("sidebar_footer")
+        footer_frame.setStyleSheet(f"""
+            QFrame#sidebar_footer {{
+                border-top: 1px solid {Color.BORDER_LIGHT};
+                padding-top: {Spacing.MD}px;
+            }}
+        """)
+        footer_layout = QVBoxLayout(footer_frame)
+        footer_layout.setContentsMargins(0, Spacing.MD, 0, 0)
+        footer_layout.setSpacing(Spacing.SM)
+        footer_layout.setAlignment(Qt.AlignmentFlag.AlignBottom)
 
-        self.tree_widget = QWidget()
-        self.tree_layout = QVBoxLayout(self.tree_widget)
-        self.tree_layout.setSpacing(4)
-        self.tree_layout.setContentsMargins(0, 0, 0, 0)
+        export_button = PrimaryButton("Export to PDF", icon="images/icons/pdf.png", parent=self) # Placeholder icon
+        export_button.setObjectName("export_button") # Use existing style from mathbank_styles.css
+        export_button.clicked.connect(self.export_clicked.emit)
+        footer_layout.addWidget(export_button)
 
-        # Placeholder inicial
-        placeholder = QLabel("Carregando tags...")
-        placeholder.setStyleSheet("color: #616f89; padding: 20px;")
-        self.tree_layout.addWidget(placeholder)
-        self.tree_layout.addStretch()
+        help_button = SecondaryButton("Help Center", icon="images/icons/help.png", parent=self) # Placeholder icon
+        help_button.clicked.connect(self.help_clicked.emit)
+        footer_layout.addWidget(help_button)
 
-        self.tree_scroll.setWidget(self.tree_widget)
-        layout.addWidget(self.tree_scroll, 1)
+        footer_frame.setLayout(footer_layout)
+        main_layout.addWidget(footer_frame)
+        main_layout.addStretch() # Push footer to bottom
 
-        # Botão de exportar
-        export_btn = QPushButton("📄 Exportar para PDF")
-        export_btn.setObjectName("export_button")
-        export_btn.setMinimumHeight(40)
-        export_btn.clicked.connect(self.exportClicked.emit)
+        self.setLayout(main_layout)
 
-        layout.addWidget(export_btn)
+    def set_tags(self, tags_data: list):
+        """
+        Sets the data for the tag tree view.
+        `tags_data` should be a list of dictionaries representing hierarchical tags.
+        """
+        self.tag_tree_view.clear()
+        self._add_tags_to_tree(self.tag_tree_view, tags_data)
 
-    def load_tags(self, tags_arvore: List[TagResponseDTO]):
-        """Carrega a árvore de tags na sidebar"""
-        # Limpar layout atual
-        while self.tree_layout.count():
-            child = self.tree_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+    def _add_tags_to_tree(self, parent_item, tags_data, level=0):
+        for tag in tags_data:
+            item = TagTreeItem(parent_item, tag['name'], tag['uuid'], level, selectable=tag.get('selectable', True), is_checked=tag.get('is_checked', False))
+            if 'children' in tag and tag['children']:
+                self._add_tags_to_tree(item, tag['children'], level + 1)
 
-        # Adicionar tags
-        self._add_tags_recursively(tags_arvore, level=0)
 
-        self.tree_layout.addStretch()
+if __name__ == '__main__':
+    import sys
+    from PyQt6.QtWidgets import QMainWindow
 
-    def _add_tags_recursively(self, tags: List[TagResponseDTO], level: int = 0, parent_expanded: bool = True):
-        """Adiciona tags recursivamente à árvore"""
-        for tag in tags:
-            item = self._create_tree_item(tag, level)
-            self.tree_layout.addWidget(item)
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
 
-            # Adicionar filhos
-            if tag.filhos:
-                self._add_tags_recursively(tag.filhos, level + 1)
+    from src.views.design.theme import ThemeManager
+    ThemeManager.apply_global_theme(app)
 
-    def _create_tree_item(self, tag: TagResponseDTO, level: int) -> QFrame:
-        """Cria um item da árvore de tags"""
-        item = QFrame()
-        item.setObjectName("tree_item")
-        item.setCursor(Qt.CursorShape.PointingHandCursor)
+    class TestMainWindow(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            self.setWindowTitle("Sidebar Test")
+            self.setGeometry(100, 100, 400, 800)
 
-        item_layout = QHBoxLayout(item)
-        item_layout.setContentsMargins(12 + (level * 16), 8, 12, 8)
-        item_layout.setSpacing(8)
+            self.sidebar = Sidebar(self)
+            self.setCentralWidget(self.sidebar)
 
-        # Ícone de expansão
-        has_children = bool(tag.filhos)
-        if has_children:
-            arrow_label = QLabel("▶")
-        else:
-            arrow_label = QLabel(" ")
-        arrow_label.setFixedWidth(12)
-        item_layout.addWidget(arrow_label)
+            self.sidebar.export_clicked.connect(lambda: print("Export button clicked!"))
+            self.sidebar.help_clicked.connect(lambda: print("Help button clicked!"))
+            self.sidebar.tag_filter_changed.connect(lambda uuid, checked: print(f"Tag filter changed: {uuid}, Checked: {checked}"))
 
-        # Ícone da tag (baseado na numeração)
-        icon = self._get_tag_icon(tag.numeracao)
-        icon_label = QLabel(icon)
-        item_layout.addWidget(icon_label)
+            # Example of dynamic tag data
+            sample_tags_data = [
+                {'name': 'Science', 'uuid': 'sci-uuid', 'selectable': False, 'children': [
+                    {'name': 'Physics', 'uuid': 'phy-uuid', 'is_checked': True, 'children': [
+                        {'name': 'Mechanics', 'uuid': 'mech-uuid'},
+                        {'name': 'Thermodynamics', 'uuid': 'thermo-uuid'}
+                    ]},
+                    {'name': 'Chemistry', 'uuid': 'chem-uuid'}
+                ]},
+                {'name': 'History', 'uuid': 'hist-uuid', 'is_checked': False, 'children': []}
+            ]
+            self.sidebar.set_tags(sample_tags_data)
 
-        # Nome da tag
-        text_label = QLabel(tag.nome)
-        text_label.setObjectName("tree_item_text_inactive")
-        item_layout.addWidget(text_label)
-        item_layout.addStretch()
-
-        # Armazenar dados da tag
-        item.setProperty("tag_uuid", tag.uuid)
-        item.setProperty("tag_nome", tag.nome)
-
-        # Evento de clique
-        item.mousePressEvent = lambda e, t=tag: self._on_tag_clicked(t)
-
-        return item
-
-    def _get_tag_icon(self, numeracao: str) -> str:
-        """Retorna ícone baseado na numeração da tag"""
-        if not numeracao:
-            return "📁"
-
-        if numeracao.startswith('V'):
-            return "🏛️"  # Vestibular
-        elif numeracao.startswith('N'):
-            return "📚"  # Série/Nível
-        elif numeracao.startswith('1'):
-            return "≈"   # Álgebra
-        elif numeracao.startswith('2'):
-            return "▦"   # Geometria
-        elif numeracao.startswith('3'):
-            return "📈"  # Cálculo
-        elif numeracao.startswith('4'):
-            return "📊"  # Estatística
-        elif numeracao.startswith('5'):
-            return "△"   # Trigonometria
-        else:
-            return "📁"
-
-    def _on_tag_clicked(self, tag: TagResponseDTO):
-        """Callback quando uma tag é clicada"""
-        self.selected_tag_uuid = tag.uuid
-        self.tagSelected.emit(tag.uuid, tag.nome)
-        logger.info(f"Tag selecionada: {tag.nome} ({tag.uuid})")
-
-    def get_selected_tag_uuid(self) -> str:
-        """Retorna UUID da tag selecionada"""
-        return self.selected_tag_uuid
+    window = TestMainWindow()
+    window.show()
+    sys.exit(app.exec())

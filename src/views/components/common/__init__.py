@@ -1,4 +1,1 @@
-"""
-Components: Common
-Componentes genéricos e utilitários
-"""
+# src/views/components/common/__init__.py

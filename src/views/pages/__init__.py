@@ -12,7 +12,7 @@ from src.views.pages.questao_preview_page import QuestaoPreview
 from src.views.pages.search_page import SearchPage, SearchPanel
 from src.views.pages.lista_page import ListaPage, ListaPanel
 from src.views.pages.questao_form_page import QuestaoFormPage, QuestaoForm
-from src.views.pages.dashboard_page import DashboardPage, Dashboard
+from src.views.pages.dashboard_page import DashboardPage
 
 __all__ = [
     'MainWindow',
@@ -29,5 +29,4 @@ __all__ = [
     'QuestaoFormPage',
     'QuestaoForm',
     'DashboardPage',
-    'Dashboard',
 ]
