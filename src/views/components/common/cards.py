@@ -1,6 +1,7 @@
 # src/views/components/common/cards.py
-from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy
+from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QGraphicsDropShadowEffect
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from src.views.design.constants import Color, Spacing, Typography, Dimensions
 from src.views.design.enums import DifficultyEnum
 from src.views.components.common.badges import Badge, DifficultyBadge
@@ -14,19 +15,21 @@ class BaseCard(QFrame):
         self.setObjectName(object_name)
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setContentsMargins(Spacing.LG, Spacing.LG, Spacing.LG, Spacing.LG)
+        
+        # Add drop shadow effect
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(12)
+        shadow.setColor(QColor(0, 0, 0, 20))  # rgba(0, 0, 0, 0.08) ≈ 20/255
+        shadow.setOffset(0, 4)
+        self.setGraphicsEffect(shadow)
+        
         self.setStyleSheet(f"""
             QFrame#{object_name} {{
                 background-color: {Color.WHITE};
                 border: 1px solid {Color.BORDER_LIGHT};
                 border-radius: {Dimensions.BORDER_RADIUS_LG};
             }}
-            QFrame#{object_name}:hover {{
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* This property is hard to apply directly via QSS like this for QFrame */
-                                                           /* For proper shadows, a custom paint event or a shadow effect is usually needed */
-            }}
         """)
-        # A proper shadow often requires a QGraphicsDropShadowEffect or custom paint.
-        # For QSS `box-shadow` is not standard for QFrame. Keeping it as a comment for now.
 
 class StatCard(BaseCard):
     """

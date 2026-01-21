@@ -277,9 +277,7 @@ class StyleSheet:
             border-radius: {Dimensions.BORDER_RADIUS_LG};
         }}
 
-        #question_card:hover {{
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }}
+        /* Shadow is now handled via QGraphicsDropShadowEffect in Python code */
 
         #card_id {{
             color: {Color.PRIMARY_BLUE};
