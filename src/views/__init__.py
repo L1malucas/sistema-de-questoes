@@ -1,25 +1,24 @@
-from src.views.widgets import (
-    LatexEditor,
-    ImagePicker,
-    TagTreeWidget,
-    QuestaoCard,
-    DifficultySelector,
-    ImageInsertDialog,
-    TableSizeDialog,
-    TableEditorDialog,
-    ColorPickerDialog,
-)
+# Widgets/Componentes
+from src.views.components.forms.latex_editor import LatexEditor
+from src.views.components.forms.image_picker import ImagePicker
+from src.views.components.forms.tag_tree import TagTreeWidget
+from src.views.components.cards.questao_card import QuestaoCard
+from src.views.components.forms.difficulty_selector import DifficultySelector
+from src.views.components.dialogs.image_insert_dialog import ImageInsertDialog
+from src.views.components.dialogs.table_editor_dialog import TableSizeDialog, TableEditorDialog
+from src.views.components.dialogs.color_picker_dialog import ColorPickerDialog
 
-from src.views.tag_manager import TagManager
-from src.views.export_dialog import ExportDialog
-from src.views.lista_form import ListaForm
-from src.views.questao_selector_dialog import QuestaoSelectorDialog
-from src.views.questao_preview import QuestaoPreview
-from src.views.search_panel import SearchPanel, SearchPage
-from src.views.lista_panel import ListaPanel, ListaPage
-from src.views.questao_form import QuestaoForm, QuestaoFormPage
+# Páginas/Dialogos
+from src.views.pages.tag_manager_page import TagManager
+from src.views.pages.export_page import ExportDialog
+from src.views.pages.lista_form_page import ListaForm
+from src.views.pages.questao_selector_page import QuestaoSelectorDialog, QuestaoSelectorCard
+from src.views.pages.questao_preview_page import QuestaoPreview
+from src.views.pages.search_page import SearchPanel, SearchPage
+from src.views.pages.lista_page import ListaPanel, ListaPage
+from src.views.pages.questao_form_page import QuestaoForm, QuestaoFormPage
 
-# New imports
+# Layout e componentes
 from src.views.components.layout.navbar import Navbar
 from src.views.components.layout.sidebar import Sidebar
 from src.views.components.question.editor_tab import EditorTab
@@ -43,11 +42,12 @@ __all__ = [
     'TableSizeDialog',
     'TableEditorDialog',
     'ColorPickerDialog',
-    # Paginas/Dialogos
+    # Páginas/Dialogos
     'TagManager',
     'ExportDialog',
     'ListaForm',
     'QuestaoSelectorDialog',
+    'QuestaoSelectorCard',
     'QuestaoPreview',
     'SearchPanel',
     'SearchPage',
@@ -55,7 +55,7 @@ __all__ = [
     'ListaPage',
     'QuestaoForm',
     'QuestaoFormPage',
-    # New components and pages
+    # Layout e componentes
     'Navbar',
     'Sidebar',
     'EditorTab',

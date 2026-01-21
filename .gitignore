@@ -40,9 +40,6 @@ env/
 # Database
 
 
-# Logs
-logs/*.log
-*.log
 
 # Backups
 backups/*.zip

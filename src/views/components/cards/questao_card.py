@@ -188,7 +188,7 @@ class QuestaoCard(QFrame):
     def _show_preview(self):
         """Abre o diálogo de preview da questão no formato PDF."""
         try:
-            from src.views.questao_preview import QuestaoPreview
+            from src.views.pages.questao_preview_page import QuestaoPreview
             from src.controllers.adapters import criar_questao_controller
 
             controller = criar_questao_controller()
