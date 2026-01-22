@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QFont, QAction, QIcon, QColor, QBrush
+from PyQt6.QtWidgets import QStyle
 import logging
 from pathlib import Path
 from typing import List
@@ -1082,144 +1083,272 @@ class QuestaoCard(QFrame):
 
     def init_ui(self, dto):
         self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
-
-        # Estilo diferente para inativas
-        if self.is_ativa:
-            self.setStyleSheet("""
-                QFrame {
-                    border: 1px solid #ddd;
-                    border-radius: 5px;
-                    background-color: white;
-                    padding: 15px;
-                }
-                QFrame:hover {
-                    border-color: #1abc9c;
-                    background-color: #f0fff4;
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                QFrame {
-                    border: 2px solid #e74c3c;
-                    border-radius: 5px;
-                    background-color: #fdf2f2;
-                    padding: 15px;
-                }
-                QFrame:hover {
-                    border-color: #c0392b;
-                    background-color: #fce4e4;
-                }
-            """)
+        
+        # Estilo do card (arredondado, branco)
+        self.setStyleSheet("""
+            QFrame {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                background-color: white;
+                padding: 16px;
+            }
+            QFrame:hover {
+                border-color: #1abc9c;
+            }
+        """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setMinimumHeight(200)
+        self.setMaximumHeight(280)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
-        # Cabeçalho
+        # Cabeçalho: ID à esquerda, ícones à direita
         header_layout = QHBoxLayout()
-
-        # Título
-        titulo = self._get_attr(dto, 'titulo') or 'Sem título'
-        title_label = QLabel(titulo)
-        title_style = "font-weight: bold; font-size: 14px; color: #2c3e50;"
-        if not self.is_ativa:
-            title_style = "font-weight: bold; font-size: 14px; color: #95a5a6; text-decoration: line-through;"
-        title_label.setStyleSheet(title_style)
-        title_label.setWordWrap(True)
-        header_layout.addWidget(title_label, 1)
-
-        # Badge de INATIVA (se aplicável)
-        if not self.is_ativa:
-            inativa_label = QLabel("INATIVA")
-            inativa_label.setStyleSheet("""
-                QLabel {
-                    background-color: #e74c3c;
-                    color: white;
-                    padding: 4px 10px;
-                    border-radius: 3px;
-                    font-size: 10px;
-                    font-weight: bold;
-                }
-            """)
-            header_layout.addWidget(inativa_label)
-
-        # Badge de tipo
-        tipo = self._get_attr(dto, 'tipo', 'N/A')
-        tipo_label = QLabel(tipo)
-        tipo_color = "#2196f3" if tipo == 'OBJETIVA' else "#9c27b0"
-        tipo_label.setStyleSheet(f"""
-            QLabel {{
-                background-color: {tipo_color};
-                color: white;
-                padding: 4px 10px;
-                border-radius: 3px;
-                font-size: 11px;
-                font-weight: bold;
-            }}
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # ID da questão (#Q-XXXX)
+        questao_id_display = f"#Q-{self.questao_id}" if self.questao_id else "#Q-XXXX"
+        id_label = QLabel(questao_id_display)
+        id_label.setStyleSheet("""
+            font-weight: bold;
+            font-size: 13px;
+            color: #3498db;
         """)
-        header_layout.addWidget(tipo_label)
-
+        header_layout.addWidget(id_label)
+        
+        header_layout.addStretch()
+        
+        # Ícones de ação (olho/lápis e três pontos)
+        actions_layout = QHBoxLayout()
+        actions_layout.setSpacing(8)
+        
+        # Ícone de visualizar/editar
+        btn_view_edit = QPushButton()
+        from PyQt6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app:
+            style = app.style()
+            if self.is_ativa:
+                icon = style.standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView)
+            else:
+                icon = style.standardIcon(QStyle.StandardPixmap.SP_FileDialogInfoView)
+            if icon:
+                btn_view_edit.setIcon(icon)
+        btn_view_edit.setFixedSize(24, 24)
+        btn_view_edit.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #f0f0f0;
+            }
+        """)
+        if self.is_ativa:
+            btn_view_edit.clicked.connect(lambda: self.editClicked.emit(self.questao_id))
+        else:
+            btn_view_edit.clicked.connect(lambda checked: self._show_preview())
+        actions_layout.addWidget(btn_view_edit)
+        
+        # Menu de três pontos
+        btn_menu = QPushButton("⋯")
+        btn_menu.setFixedSize(24, 24)
+        btn_menu.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+                border-radius: 4px;
+                font-size: 18px;
+                font-weight: bold;
+                color: #7f8c8d;
+            }
+            QPushButton:hover {
+                background-color: #f0f0f0;
+            }
+        """)
+        btn_menu.clicked.connect(self._show_context_menu)
+        actions_layout.addWidget(btn_menu)
+        
+        header_layout.addLayout(actions_layout)
         layout.addLayout(header_layout)
 
-        # Preview do enunciado
+        # Título da questão
+        titulo = self._get_attr(dto, 'titulo') or 'Sem título'
+        title_label = QLabel(titulo)
+        title_label.setStyleSheet("""
+            font-weight: bold;
+            font-size: 15px;
+            color: #2c3e50;
+            margin-top: 4px;
+        """)
+        title_label.setWordWrap(True)
+        layout.addWidget(title_label)
+
+        # Área de conteúdo (preview do enunciado com borda tracejada)
         enunciado = self._get_attr(dto, 'enunciado', '')
-        enunciado_preview = (enunciado[:150] + "...") if len(enunciado) > 150 else enunciado
-        enunciado_label = QLabel(enunciado_preview)
-        enunciado_label.setStyleSheet("color: #555; margin-top: 8px; font-size: 12px;")
-        enunciado_label.setWordWrap(True)
-        layout.addWidget(enunciado_label)
+        # Extrair primeira fórmula ou trecho relevante
+        enunciado_preview = self._extract_preview(enunciado)
+        
+        content_frame = QFrame()
+        content_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f8f9fa;
+                border: 2px dashed #d0d0d0;
+                border-radius: 6px;
+                padding: 12px;
+                min-height: 60px;
+            }
+        """)
+        content_layout = QVBoxLayout(content_frame)
+        content_layout.setContentsMargins(8, 8, 8, 8)
+        
+        content_label = QLabel(enunciado_preview)
+        content_label.setStyleSheet("""
+            color: #555;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+        """)
+        content_label.setWordWrap(True)
+        content_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        content_layout.addWidget(content_label)
+        
+        layout.addWidget(content_frame)
 
-        # Metadados
-        meta_layout = QHBoxLayout()
-        meta_layout.setContentsMargins(0, 10, 0, 5)
+        layout.addStretch()
 
-        fonte = self._get_attr(dto, 'fonte') or 'N/A'
-        ano = self._get_attr(dto, 'ano') or 'N/A'
-        dificuldade = self._get_attr(dto, 'dificuldade_nome') or self._get_attr(dto, 'dificuldade') or 'N/A'
-        meta_text = f"{fonte} • {ano} • {dificuldade}"
-        meta_label = QLabel(meta_text)
-        meta_label.setStyleSheet("color: #777; font-size: 11px;")
-        meta_layout.addWidget(meta_label)
-
-        meta_layout.addStretch()
-        layout.addLayout(meta_layout)
-
-        # Botões de ação
-        btn_layout = QHBoxLayout()
-
-        btn_visualizar = QPushButton("Visualizar")
-        btn_visualizar.setMaximumWidth(90)
-        btn_visualizar.clicked.connect(lambda checked: self._show_preview())
-        btn_layout.addWidget(btn_visualizar)
-
-        btn_editar = QPushButton("Editar")
-        btn_editar.setMaximumWidth(70)
-        btn_editar.clicked.connect(lambda: self.editClicked.emit(self.questao_id))
-        btn_layout.addWidget(btn_editar)
-
+        # Tags na parte inferior
+        tags_layout = QHBoxLayout()
+        tags_layout.setContentsMargins(0, 8, 0, 0)
+        tags_layout.setSpacing(6)
+        
+        # Extrair tags e metadados
+        tags = self._extract_tags(dto)
+        for tag_text, tag_color in tags:
+            tag_label = QLabel(tag_text)
+            tag_label.setStyleSheet(f"""
+                background-color: {tag_color};
+                color: white;
+                padding: 4px 10px;
+                border-radius: 12px;
+                font-size: 10px;
+                font-weight: bold;
+            """)
+            tags_layout.addWidget(tag_label)
+        
+        tags_layout.addStretch()
+        layout.addLayout(tags_layout)
+    
+    def _extract_preview(self, enunciado):
+        """Extrai preview do enunciado (fórmula ou trecho)"""
+        if not enunciado:
+            return ""
+        
+        # Tentar encontrar fórmula LaTeX
+        import re
+        # Procurar por padrões de fórmula
+        formula_patterns = [
+            r'\\[a-zA-Z]+\{[^}]+\}',  # Comandos LaTeX simples
+            r'\$[^$]+\$',  # Fórmulas inline
+            r'\\begin\{[^}]+\}.*?\\end\{[^}]+\}',  # Ambientes LaTeX
+        ]
+        
+        for pattern in formula_patterns:
+            matches = re.findall(pattern, enunciado, re.DOTALL)
+            if matches:
+                # Pegar primeira fórmula encontrada
+                preview = matches[0]
+                # Limpar para exibição
+                preview = preview.replace('$', '').replace('\\', '')
+                if len(preview) > 80:
+                    preview = preview[:80] + "..."
+                return preview
+        
+        # Se não encontrar fórmula, pegar primeiras palavras
+        preview = enunciado.strip()
+        # Remover LaTeX básico para preview
+        preview = re.sub(r'\\[a-zA-Z]+\{([^}]+)\}', r'\1', preview)
+        preview = re.sub(r'\{|\}', '', preview)
+        if len(preview) > 100:
+            preview = preview[:100] + "..."
+        return preview
+    
+    def _extract_tags(self, dto):
+        """Extrai tags e metadados para exibição"""
+        tags = []
+        
+        # Fonte/Banca
+        fonte = self._get_attr(dto, 'fonte') or self._get_attr(dto, 'fonte_nome')
+        if fonte and fonte != 'N/A':
+            tags.append((fonte.upper(), "#3498db"))  # Azul
+        
+        # Dificuldade
+        dificuldade = self._get_attr(dto, 'dificuldade_nome') or self._get_attr(dto, 'dificuldade')
+        if dificuldade and dificuldade != 'N/A':
+            dificuldade_upper = dificuldade.upper()
+            if dificuldade_upper in ['FÁCIL', 'FACIL', 'EASY']:
+                tags.append((dificuldade_upper, "#27ae60"))  # Verde
+            elif dificuldade_upper in ['MÉDIO', 'MEDIO', 'MEDIUM']:
+                tags.append((dificuldade_upper, "#f39c12"))  # Laranja
+            elif dificuldade_upper in ['DIFÍCIL', 'DIFICIL', 'HARD']:
+                tags.append((dificuldade_upper, "#e74c3c"))  # Vermelho
+        
+        # Tags de conteúdo (primeiras 2)
+        try:
+            questao_tags = self._get_attr(dto, 'tags', [])
+            if questao_tags:
+                count = 0
+                for tag in questao_tags:
+                    if count >= 2:
+                        break
+                    if isinstance(tag, dict):
+                        nome = tag.get('nome', '')
+                        numeracao = tag.get('numeracao', '')
+                    else:
+                        nome = getattr(tag, 'nome', '')
+                        numeracao = getattr(tag, 'numeracao', '')
+                    
+                    # Apenas tags de conteúdo (não vestibular/série)
+                    if numeracao and numeracao[0].isdigit() and nome:
+                        tags.append((nome.upper(), "#95a5a6"))  # Cinza
+                        count += 1
+        except:
+            pass
+        
+        # Status se inativa
+        if not self.is_ativa:
+            tags.append(("INATIVA", "#e74c3c"))
+        
+        return tags
+    
+    def _show_context_menu(self):
+        """Mostra menu de contexto com ações"""
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self)
+        
+        action_view = menu.addAction("Visualizar")
+        action_view.triggered.connect(lambda: self._show_preview())
+        
         if self.is_ativa:
-            btn_adicionar = QPushButton("Add Lista")
-            btn_adicionar.setMaximumWidth(80)
-            btn_adicionar.clicked.connect(lambda: self.addToListClicked.emit(self.questao_id))
-            btn_layout.addWidget(btn_adicionar)
-
-        btn_layout.addStretch()
-
-        if self.is_ativa:
-            btn_inativar = QPushButton("Inativar")
-            btn_inativar.setMaximumWidth(80)
-            btn_inativar.setStyleSheet("QPushButton { color: #e67e22; font-weight: bold; }")
-            btn_inativar.setToolTip("Inativar esta questao")
-            btn_inativar.clicked.connect(lambda: self.inactivateClicked.emit(self.questao_id))
-            btn_layout.addWidget(btn_inativar)
+            action_edit = menu.addAction("Editar")
+            action_edit.triggered.connect(lambda: self.editClicked.emit(self.questao_id))
+            
+            menu.addSeparator()
+            
+            action_add_list = menu.addAction("Adicionar à Lista")
+            action_add_list.triggered.connect(lambda: self.addToListClicked.emit(self.questao_id))
+            
+            menu.addSeparator()
+            
+            action_inactivate = menu.addAction("Inativar")
+            action_inactivate.triggered.connect(lambda: self.inactivateClicked.emit(self.questao_id))
         else:
-            btn_reativar = QPushButton("Reativar")
-            btn_reativar.setMaximumWidth(80)
-            btn_reativar.setStyleSheet("QPushButton { color: #27ae60; font-weight: bold; }")
-            btn_reativar.setToolTip("Reativar esta questao")
-            btn_reativar.clicked.connect(lambda: self.reactivateClicked.emit(self.questao_id))
-            btn_layout.addWidget(btn_reativar)
-
-        layout.addLayout(btn_layout)
+            action_reactivate = menu.addAction("Reativar")
+            action_reactivate.triggered.connect(lambda: self.reactivateClicked.emit(self.questao_id))
+        
+        menu.exec(self.mapToGlobal(self.sender().pos()))
 
     def mouseDoubleClickEvent(self, event):
         """Abre preview com duplo clique no card."""

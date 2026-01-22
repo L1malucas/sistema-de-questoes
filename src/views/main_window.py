@@ -3,9 +3,8 @@ View: Main Window
 DESCRIÇÃO: Janela principal da aplicação
 RELACIONAMENTOS: PyQt6, todos os controllers
 COMPONENTES:
-    - Menu superior (Arquivo, Editar, Visualizar, Ajuda)
+    - Menu superior (componentizado em menu_bar.py)
     - Barra de ferramentas (ações rápidas)
-    - Painel lateral (navegação)
     - Área central (conteúdo dinâmico)
     - Barra de status (informações)
 MENUS:
@@ -17,12 +16,12 @@ MENUS:
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QMenuBar, QMenu, QToolBar, QStatusBar, QLabel,
-    QPushButton, QStackedWidget, QListWidget, QMessageBox,
-    QSplitter, QStyle
+    QToolBar, QStatusBar, QLabel,
+    QStackedWidget, QMessageBox,
+    QStyle
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QAction, QIcon, QKeySequence
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction, QIcon
 import logging
 
 from src.utils import ErrorHandler
@@ -63,177 +62,35 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Layout principal (horizontal)
-        main_layout = QHBoxLayout(central_widget)
+        # Layout principal (vertical)
+        main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Splitter para dividir sidebar e conteúdo
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-
-        # Painel lateral (Sidebar)
-        self.sidebar = self.create_sidebar()
-        splitter.addWidget(self.sidebar)
-
         # Área central com stack de telas
         self.stacked_widget = QStackedWidget()
-        splitter.addWidget(self.stacked_widget)
-
-        # Proporções do splitter (20% sidebar, 80% conteúdo)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 4)
-
-        main_layout.addWidget(splitter)
-
-    def create_sidebar(self):
-        """Cria painel lateral de navegação"""
-        sidebar = QWidget()
-        sidebar.setMaximumWidth(250)
-        sidebar.setMinimumWidth(200)
-        sidebar.setStyleSheet("""
-            QWidget {
-                background-color: #2c3e50;
-                color: white;
-            }
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                padding: 15px;
-                text-align: left;
-                color: white;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #34495e;
-            }
-            QPushButton:pressed {
-                background-color: #1abc9c;
-            }
-        """)
-
-        layout = QVBoxLayout(sidebar)
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 20, 0, 0)
-
-        # Logo/Título
-        title_label = QLabel("Banco de Questões")
-        title_label.setStyleSheet("""
-            font-size: 16px;
-            font-weight: bold;
-            padding: 20px;
-            background-color: #1abc9c;
-        """)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title_label)
-
-        # Botões de navegação
-        nav_buttons = [
-            ("Buscar Questões", self.show_questoes_view, QStyle.StandardPixmap.SP_FileDialogStart),
-            ("Nova Questão", self.show_nova_questao, QStyle.StandardPixmap.SP_FileDialogNewFolder),
-            ("Listas", self.show_listas_view, QStyle.StandardPixmap.SP_FileDialogListView),
-            ("Nova Lista", self.show_nova_lista, QStyle.StandardPixmap.SP_FileDialogNewFolder),
-            ("Gerenciar Tags", self.show_tag_manager, QStyle.StandardPixmap.SP_FileDialogDetailedView),
-            ("Estatísticas", self.show_estatisticas, QStyle.StandardPixmap.SP_FileDialogInfoView),
-        ]
-
-        self.nav_buttons = {}
-        for text, callback, icon_pixmap in nav_buttons:
-            btn = QPushButton(text)
-            btn.setIcon(self.style().standardIcon(icon_pixmap))
-            btn.clicked.connect(callback)
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            layout.addWidget(btn)
-            self.nav_buttons[text] = btn
-
-        layout.addStretch()
-
-        # Informações na parte inferior
-        info_label = QLabel("Versão 1.0.1")
-        info_label.setStyleSheet("padding: 10px; font-size: 10px; color: #95a5a6;")
-        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(info_label)
-
-        return sidebar
+        main_layout.addWidget(self.stacked_widget)
 
     def create_menu_bar(self):
-        """Cria barra de menus"""
-        menubar = self.menuBar()
-
-        # Menu Arquivo
-        menu_arquivo = menubar.addMenu("&Arquivo")
-
-        action_nova_questao = QAction("&Nova Questão", self)
-        action_nova_questao.setShortcut(QKeySequence("Ctrl+N"))
-        action_nova_questao.triggered.connect(self.show_nova_questao)
-        menu_arquivo.addAction(action_nova_questao)
-
-        action_nova_lista = QAction("Nova &Lista", self)
-        action_nova_lista.setShortcut(QKeySequence("Ctrl+L"))
-        action_nova_lista.triggered.connect(self.show_nova_lista)
-        menu_arquivo.addAction(action_nova_lista)
-
-        menu_arquivo.addSeparator()
-
-        action_backup = QAction("&Backup", self)
-        action_backup.setShortcut(QKeySequence("Ctrl+B"))
-        action_backup.triggered.connect(self.fazer_backup)
-        menu_arquivo.addAction(action_backup)
-
-        action_restaurar = QAction("&Restaurar", self)
-        action_restaurar.triggered.connect(self.restaurar_backup)
-        menu_arquivo.addAction(action_restaurar)
-
-        menu_arquivo.addSeparator()
-
-        action_sair = QAction("&Sair", self)
-        action_sair.setShortcut(QKeySequence("Ctrl+Q"))
-        action_sair.triggered.connect(self.close)
-        menu_arquivo.addAction(action_sair)
-
-        # Menu Editar
-        menu_editar = menubar.addMenu("&Editar")
-
-        action_tags = QAction("Gerenciar &Tags", self)
-        action_tags.setShortcut(QKeySequence("Ctrl+T"))
-        action_tags.triggered.connect(self.show_tag_manager)
-        menu_editar.addAction(action_tags)
-
-        menu_editar.addSeparator()
-
-        action_config = QAction("&Configurações", self)
-        action_config.setShortcut(QKeySequence("Ctrl+,"))
-        action_config.triggered.connect(self.show_configuracoes)
-        menu_editar.addAction(action_config)
-
-        # Menu Visualizar
-        menu_visualizar = menubar.addMenu("&Visualizar")
-
-        action_questoes = QAction("&Questões", self)
-        action_questoes.setShortcut(QKeySequence("Ctrl+1"))
-        action_questoes.triggered.connect(self.show_questoes_view)
-        menu_visualizar.addAction(action_questoes)
-
-        action_listas = QAction("&Listas", self)
-        action_listas.setShortcut(QKeySequence("Ctrl+2"))
-        action_listas.triggered.connect(self.show_listas_view)
-        menu_visualizar.addAction(action_listas)
-
-        action_estatisticas = QAction("&Estatísticas", self)
-        action_estatisticas.setShortcut(QKeySequence("Ctrl+3"))
-        action_estatisticas.triggered.connect(self.show_estatisticas)
-        menu_visualizar.addAction(action_estatisticas)
-
-        # Menu Ajuda
-        menu_ajuda = menubar.addMenu("A&juda")
-
-        action_sobre = QAction("&Sobre", self)
-        action_sobre.triggered.connect(self.show_sobre)
-        menu_ajuda.addAction(action_sobre)
-
-        action_doc = QAction("&Documentação", self)
-        action_doc.setShortcut(QKeySequence("F1"))
-        action_doc.triggered.connect(self.show_documentacao)
-        menu_ajuda.addAction(action_doc)
+        """Cria barra de menus usando componente"""
+        from src.views.menu_bar import MenuBarComponent
+        
+        callbacks = {
+            'nova_questao': self.show_questoes_view,  # Abre tela de questões (lá tem botão nova questão)
+            'nova_lista': self.show_listas_view,  # Abre tela de listas (lá tem botão nova lista)
+            'backup': self.fazer_backup,
+            'restaurar': self.restaurar_backup,
+            'sair': self.close,
+            'gerenciar_tags': self.show_tag_panel,  # Abre tela de tags (lá tem botão para abrir modal)
+            'configuracoes': self.show_configuracoes,
+            'visualizar_questoes': self.show_questoes_view,
+            'visualizar_listas': self.show_listas_view,
+            'visualizar_estatisticas': self.show_estatisticas,
+            'sobre': self.show_sobre,
+            'documentacao': self.show_documentacao
+        }
+        
+        self.menu_bar_component = MenuBarComponent(self, callbacks)
 
     def create_toolbar(self):
         """Cria barra de ferramentas"""
@@ -244,12 +101,12 @@ class MainWindow(QMainWindow):
         # Ações rápidas
         action_nova_questao = QAction("Nova Questão", self)
         action_nova_questao.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
-        action_nova_questao.triggered.connect(self.show_nova_questao)
+        action_nova_questao.triggered.connect(self.show_questoes_view)  # Abre tela de questões
         toolbar.addAction(action_nova_questao)
 
         action_nova_lista = QAction("Nova Lista", self)
         action_nova_lista.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
-        action_nova_lista.triggered.connect(self.show_nova_lista)
+        action_nova_lista.triggered.connect(self.show_listas_view)  # Abre tela de listas
         toolbar.addAction(action_nova_lista)
 
         toolbar.addSeparator()
@@ -261,7 +118,7 @@ class MainWindow(QMainWindow):
 
         action_tags = QAction("Tags", self)
         action_tags.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView))
-        action_tags.triggered.connect(self.show_tag_manager)
+        action_tags.triggered.connect(self.show_tag_panel)
         toolbar.addAction(action_tags)
 
         toolbar.addSeparator()
@@ -343,14 +200,17 @@ class MainWindow(QMainWindow):
         dialog = ListaForm(parent=self)
         dialog.exec()
 
-    def show_tag_manager(self):
-        """Abre gerenciador de tags"""
-        logger.info("Abrindo diálogo: Gerenciador de Tags")
+    def show_tag_panel(self):
+        """Exibe tela de gerenciamento de tags"""
+        logger.info("Navegando para: Gerenciamento de Tags")
         self.status_label.setText("Gerenciando tags")
 
-        from src.views.tag_manager import TagManager
-        dialog = TagManager(parent=self)
-        dialog.exec()
+        if not hasattr(self, 'tag_panel'):
+            from src.views.tag_panel import TagPanel
+            self.tag_panel = TagPanel(self)
+            self.stacked_widget.addWidget(self.tag_panel)
+
+        self.stacked_widget.setCurrentWidget(self.tag_panel)
 
     def show_estatisticas(self):
         """Exibe tela de estatísticas"""
