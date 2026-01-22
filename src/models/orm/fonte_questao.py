@@ -1,7 +1,7 @@
 """
 Model ORM para Fonte de Questão
 """
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, Integer
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .base import BaseModel
@@ -15,7 +15,11 @@ class FonteQuestao(BaseModel):
 
     sigla = Column(String(50), unique=True, nullable=False, index=True)
     nome_completo = Column(String(200), nullable=False)
-    tipo_instituicao = Column(String(50), nullable=False)  # VESTIBULAR, CONCURSO, AUTORAL
+    tipo_instituicao = Column(String(50), nullable=False)  # VESTIBULAR, CONCURSO, OLIMPIADA, AUTORAL, DIDATICO
+    estado = Column(String(2), nullable=True)  # SP, RJ, etc.
+    ano_inicio = Column(Integer, nullable=True)  # Primeiro ano conhecido
+    ano_fim = Column(Integer, nullable=True)  # Último ano (NULL se ainda ativo)
+    url_oficial = Column(String(500), nullable=True)
     data_criacao = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships

@@ -155,7 +155,7 @@ class QuestaoPreview(QDialog):
                         first_widget.setAlignment(Qt.AlignmentFlag.AlignLeft)
                     elif correta and isinstance(first_widget, QLabel):
                         texto_atual = first_widget.text()
-                        first_widget.setText(f"<span style='color: green;'>{texto_atual}</span> ✓")
+                        first_widget.setText(f"<span style='color: green;'>{texto_atual}</span>")
                     first_line.addWidget(first_widget, 1)
                 else:
                     empty_label = QLabel("")

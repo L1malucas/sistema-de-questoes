@@ -5,9 +5,10 @@ Pagina de visualizacao e gerenciamento de listas de questoes.
 import logging
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QListWidget,
-    QListWidgetItem, QMessageBox
+    QListWidgetItem, QMessageBox, QStyle
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 
 from src.controllers.adapters import criar_lista_controller
 from src.views.pages.lista_form_page import ListaForm
@@ -33,11 +34,12 @@ class ListaPage(QWidget):
 
         # Cabecalho
         header_layout = QHBoxLayout()
-        title_label = QLabel("Minhas Listas de Questoes")
+        title_label = QLabel("Minhas Listas de Questões")
         title_label.setStyleSheet("font-size: 20px; font-weight: bold;")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
-        btn_nova_lista = QPushButton("+ Nova Lista")
+        btn_nova_lista = QPushButton("Nova Lista")
+        btn_nova_lista.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
         btn_nova_lista.clicked.connect(self.abrir_form_nova_lista)
         btn_nova_lista.setStyleSheet("background-color: #1abc9c; color: white; padding: 8px 15px; font-weight: bold; border-radius: 4px;")
         header_layout.addWidget(btn_nova_lista)
@@ -51,16 +53,19 @@ class ListaPage(QWidget):
 
         # Botoes de acao
         action_layout = QHBoxLayout()
-
+        
         btn_exportar_lista = QPushButton("Exportar Selecionada")
-        btn_exportar_lista.clicked.connect(self.abrir_dialogo_exportacao)
+        btn_exportar_lista.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView))
+        btn_exportar_lista.clicked.connect(self.abrir_dialogo_exportacao) # Nova conexão
         action_layout.addWidget(btn_exportar_lista)
 
         action_layout.addStretch()
         btn_editar_lista = QPushButton("Editar Selecionada")
+        btn_editar_lista.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView))
         btn_editar_lista.clicked.connect(self.abrir_form_edicao_lista)
         action_layout.addWidget(btn_editar_lista)
         btn_deletar_lista = QPushButton("Deletar Selecionada")
+        btn_deletar_lista.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon))
         btn_deletar_lista.setStyleSheet("color: #e74c3c;")
         btn_deletar_lista.clicked.connect(self.deletar_lista_selecionada)
         action_layout.addWidget(btn_deletar_lista)

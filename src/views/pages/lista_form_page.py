@@ -6,9 +6,10 @@ Formulário de criação/edição de listas de questões
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QTextEdit, QListWidget, QListWidgetItem, QMessageBox,
-    QGroupBox, QFormLayout
+    QGroupBox, QFormLayout, QStyle
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
 import logging
 from typing import List
 
@@ -47,7 +48,7 @@ class ListaForm(QDialog):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        header = QLabel("📋 " + ("Editar Lista" if self.is_editing else "Nova Lista"))
+        header = QLabel("Editar Lista" if self.is_editing else "Nova Lista")
         header.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(header)
 
@@ -78,10 +79,12 @@ class ListaForm(QDialog):
         self.questoes_list.setMinimumHeight(200)
         questoes_layout.addWidget(self.questoes_list)
         btn_questoes_layout = QHBoxLayout()
-        btn_add = QPushButton("➕ Adicionar Questão")
+        btn_add = QPushButton("Adicionar Questão")
+        btn_add.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
         btn_add.clicked.connect(self.adicionar_questao)
         btn_questoes_layout.addWidget(btn_add)
-        btn_remove = QPushButton("➖ Remover Selecionada")
+        btn_remove = QPushButton("Remover Selecionada")
+        btn_remove.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon))
         btn_remove.clicked.connect(self.remover_questao)
         btn_questoes_layout.addWidget(btn_remove)
         btn_questoes_layout.addStretch()
@@ -91,10 +94,12 @@ class ListaForm(QDialog):
         # Botões finais
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        btn_cancel = QPushButton("❌ Cancelar")
+        btn_cancel = QPushButton("Cancelar")
+        btn_cancel.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCancelButton))
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
-        btn_save = QPushButton("💾 Salvar")
+        btn_save = QPushButton("Salvar")
+        btn_save.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
         btn_save.setStyleSheet("background-color: #1abc9c; color: white; padding: 8px 20px; font-weight: bold; border-radius: 4px;")
         btn_save.clicked.connect(self.salvar_lista)
         btn_layout.addWidget(btn_save)

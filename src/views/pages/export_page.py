@@ -6,9 +6,11 @@ Diálogo de configuração de exportação LaTeX
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QCheckBox, QRadioButton, QButtonGroup, QSpinBox, QSlider,
-    QComboBox, QGroupBox, QFileDialog, QMessageBox, QLineEdit
+    QComboBox, QGroupBox, QFileDialog, QMessageBox, QLineEdit,
+    QStyle
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 import logging
 from pathlib import Path
 
@@ -34,7 +36,7 @@ class ExportDialog(QDialog):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        header = QLabel("📄 Configuração de Exportação LaTeX")
+        header = QLabel("Configuração de Exportação LaTeX")
         header.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(header)
 
@@ -157,15 +159,18 @@ class ExportDialog(QDialog):
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        btn_cancel = QPushButton("❌ Cancelar")
+        btn_cancel = QPushButton("Cancelar")
+        btn_cancel.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCancelButton))
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
-        btn_preview = QPushButton("👁️ Preview")
+        btn_preview = QPushButton("Preview")
+        btn_preview.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogInfoView))
         btn_preview.setStyleSheet("background-color: #9b59b6; color: white; padding: 8px 20px; font-weight: bold; border-radius: 4px;")
         btn_preview.setToolTip("Gera um PDF temporário para visualização antes de exportar")
         btn_preview.clicked.connect(self.perform_preview)
         btn_layout.addWidget(btn_preview)
-        btn_export = QPushButton("📄 Exportar")
+        btn_export = QPushButton("Exportar")
+        btn_export.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
         btn_export.setStyleSheet("background-color: #2980b9; color: white; padding: 8px 20px; font-weight: bold; border-radius: 4px;")
         btn_export.clicked.connect(self.perform_export)
         btn_layout.addWidget(btn_export)

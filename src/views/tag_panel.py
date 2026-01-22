@@ -1,15 +1,13 @@
 """
-Page: Tag Manager
-Interface de gerenciamento de tags hierárquicas
+View: Tag Panel
+DESCRIÇÃO: Painel de gerenciamento de tags (tela, não modal)
 """
-
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTreeWidget, QTreeWidgetItem, QMessageBox, QGroupBox, QInputDialog,
     QStyle
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
 import logging
 from typing import List
 
@@ -20,38 +18,39 @@ from src.application.dtos.tag_dto import TagCreateDTO, TagUpdateDTO, TagResponse
 logger = logging.getLogger(__name__)
 
 
-class TagManager(QDialog):
+class TagPanel(QWidget):
     """
-    Gerenciador de tags hierárquicas.
-    Permite criar, editar e organizar tags.
+    Painel de gerenciamento de tags.
+    Exibe o conteúdo do TagManager diretamente na tela.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Gerenciar Tags")
-        self.setMinimumSize(800, 600)
-        self.resize(900, 700)
-
         # Injeção de dependência
         self.controller = criar_tag_controller()
-
+        
         # Estado: mostrar tags ativas ou inativas
         self.mostrando_inativas = False
-
+        
         self.init_ui()
         self.load_tags()
-
-        logger.info("TagManager inicializado")
+        logger.info("TagPanel inicializado")
 
     def init_ui(self):
         """Configura a interface"""
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
 
+        # Cabeçalho
         header = QLabel("Gerenciamento de Tags Hierárquicas")
-        header.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        header.setStyleSheet("font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #2c3e50;")
         layout.addWidget(header)
 
+        # Layout principal
         main_layout = QHBoxLayout()
+        
+        # Grupo da árvore
         tree_group = QGroupBox("Tags Existentes")
         tree_layout = QVBoxLayout(tree_group)
 
@@ -61,6 +60,7 @@ class TagManager(QDialog):
         self.tree.itemSelectionChanged.connect(self.on_selection_changed)
         tree_layout.addWidget(self.tree)
 
+        # Botões de controle da árvore
         expand_layout = QHBoxLayout()
         btn_expand = QPushButton("Expandir Tudo")
         btn_expand.clicked.connect(self.tree.expandAll)
@@ -72,8 +72,10 @@ class TagManager(QDialog):
 
         main_layout.addWidget(tree_group, 2)
 
+        # Grupo de ações
         actions_group = QGroupBox("Ações")
         actions_layout = QVBoxLayout(actions_group)
+        
         self.info_label = QLabel("Selecione uma tag para ver detalhes")
         self.info_label.setStyleSheet("padding: 10px; background-color: #f0f0f0; border-radius: 5px;")
         self.info_label.setWordWrap(True)
@@ -81,18 +83,21 @@ class TagManager(QDialog):
         actions_layout.addWidget(self.info_label)
         actions_layout.addSpacing(20)
 
+        # Botão Nova Tag
         btn_nova = QPushButton("Nova Tag")
         btn_nova.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
         btn_nova.clicked.connect(self.criar_tag)
         btn_nova.setStyleSheet("background-color: #1abc9c; color: white; padding: 10px; font-weight: bold; border-radius: 4px;")
         actions_layout.addWidget(btn_nova)
 
+        # Botão Editar
         self.btn_editar = QPushButton("Editar Nome")
         self.btn_editar.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView))
         self.btn_editar.clicked.connect(self.editar_tag)
         self.btn_editar.setEnabled(False)
         actions_layout.addWidget(self.btn_editar)
 
+        # Botão Inativar
         self.btn_inativar = QPushButton("Inativar")
         self.btn_inativar.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCancelButton))
         self.btn_inativar.clicked.connect(self.inativar_tag)
@@ -100,6 +105,7 @@ class TagManager(QDialog):
         self.btn_inativar.setStyleSheet("color: #e67e22;")
         actions_layout.addWidget(self.btn_inativar)
 
+        # Botão Reativar
         self.btn_reativar = QPushButton("Reativar")
         self.btn_reativar.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogApplyButton))
         self.btn_reativar.clicked.connect(self.reativar_tag)
@@ -110,6 +116,7 @@ class TagManager(QDialog):
 
         actions_layout.addSpacing(20)
 
+        # Botão Toggle Inativas
         self.btn_toggle_inativas = QPushButton("Ver Tags Inativas")
         self.btn_toggle_inativas.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogListView))
         self.btn_toggle_inativas.clicked.connect(self.toggle_visualizacao_inativas)
@@ -119,14 +126,6 @@ class TagManager(QDialog):
         actions_layout.addStretch()
         main_layout.addWidget(actions_group, 1)
         layout.addLayout(main_layout)
-
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        btn_close = QPushButton("Fechar")
-        btn_close.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOkButton))
-        btn_close.clicked.connect(self.accept)
-        btn_layout.addWidget(btn_close)
-        layout.addLayout(btn_layout)
 
     def _add_tree_items(self, parent_item, tags: List[TagResponseDTO]):
         """Adiciona recursivamente itens à árvore."""
@@ -398,6 +397,3 @@ class TagManager(QDialog):
             self.btn_inativar.setVisible(True)
 
         self.load_tags()
-
-
-logger.info("TagManager carregado")

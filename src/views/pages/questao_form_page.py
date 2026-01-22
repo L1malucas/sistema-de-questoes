@@ -7,10 +7,12 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QComboBox, QScrollArea, QGroupBox, QRadioButton,
     QButtonGroup, QSpinBox, QTextEdit, QTabWidget, QWidget,
-    QCheckBox, QMessageBox, QInputDialog, QCompleter
+    QCheckBox, QMessageBox, QInputDialog, QStyle
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
 import logging
+from typing import List, Optional
 
 from src.views.components.forms.latex_editor import LatexEditor
 from src.views.components.forms.tag_tree import TagTreeWidget
@@ -21,6 +23,8 @@ from src.controllers.adapters import criar_questao_controller
 from src.controllers.adapters import criar_tag_controller
 from src.application.dtos import QuestaoCreateDTO, QuestaoUpdateDTO, AlternativaDTO, TagCreateDTO
 from src.utils import ErrorHandler
+from src.database.session_manager import session_manager
+from src.repositories import FonteQuestaoRepository, NivelEscolarRepository
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +63,7 @@ class QuestaoFormPage(QDialog):
     def init_ui(self):
         layout = QVBoxLayout(self)
         header_layout = QHBoxLayout()
-        title_label = QLabel("Nova Questao" if not self.is_editing else "Editar Questao")
+        title_label = QLabel("Nova Questão" if not self.is_editing else "Editar Questão")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
@@ -98,17 +102,19 @@ class QuestaoFormPage(QDialog):
         meta_layout.addStretch()
         info_layout.addLayout(meta_layout)
 
-        # Segunda linha: Fonte, Serie, Dificuldade
+        # Segunda linha: Fonte, Nível, Dificuldade
         meta_layout2 = QHBoxLayout()
         meta_layout2.addWidget(QLabel("Fonte/Banca:"))
-        self.fonte_input = QLineEdit()
-        self.fonte_input.setPlaceholderText("Ex: ENEM, FUVEST, UNICAMP...")
-        self.fonte_input.setToolTip("Digite a fonte/banca. Se nao existir, sera criada automaticamente.")
-        meta_layout2.addWidget(self.fonte_input)
-        meta_layout2.addWidget(QLabel("Serie/Nivel:"))
-        self.serie_combo = QComboBox()
-        self.serie_combo.addItem("Selecione...", None)
-        meta_layout2.addWidget(self.serie_combo)
+        self.fonte_combo = QComboBox()
+        self.fonte_combo.addItem("Selecione...", None)
+        self.fonte_combo.setEditable(True)
+        self.fonte_combo.setToolTip("Selecione ou digite a fonte/banca. Se não existir, será criada automaticamente.")
+        meta_layout2.addWidget(self.fonte_combo)
+        meta_layout2.addWidget(QLabel("Nível Escolar:"))
+        self.nivel_combo = QComboBox()
+        self.nivel_combo.addItem("Selecione...", None)
+        self.nivel_combo.setToolTip("Selecione o nível escolar da questão (pode selecionar múltiplos)")
+        meta_layout2.addWidget(self.nivel_combo)
         meta_layout2.addStretch()
         info_layout.addLayout(meta_layout2)
 
@@ -160,8 +166,9 @@ class QuestaoFormPage(QDialog):
         tags_header_layout = QHBoxLayout()
         tags_header_layout.addWidget(QLabel("Selecione as tags que classificam esta questao:"))
         tags_header_layout.addStretch()
-        btn_criar_tag = QPushButton("+ Criar Tag")
-        btn_criar_tag.setToolTip("Criar uma nova tag de conteudo")
+        btn_criar_tag = QPushButton("Criar Tag")
+        btn_criar_tag.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
+        btn_criar_tag.setToolTip("Criar uma nova tag de conteúdo")
         btn_criar_tag.clicked.connect(self.criar_tag_conteudo)
         tags_header_layout.addWidget(btn_criar_tag)
         tags_layout.addLayout(tags_header_layout)
@@ -176,12 +183,15 @@ class QuestaoFormPage(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         btn_preview = QPushButton("Preview")
+        btn_preview.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogInfoView))
         btn_preview.clicked.connect(self.show_preview)
         btn_layout.addWidget(btn_preview)
         btn_cancel = QPushButton("Cancelar")
+        btn_cancel.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCancelButton))
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
         btn_save = QPushButton("Salvar")
+        btn_save.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
         btn_save.setStyleSheet("background-color: #1abc9c; color: white; padding: 8px 20px; border-radius: 4px; font-weight: bold;")
         btn_save.clicked.connect(self.save_questao)
         btn_layout.addWidget(btn_save)
@@ -200,7 +210,9 @@ class QuestaoFormPage(QDialog):
         texto_input = QLineEdit()
         texto_input.setPlaceholderText(f"Digite o texto da alternativa {letra}...")
         layout.addWidget(texto_input)
-        btn_image = QPushButton("IMG")
+        btn_image = QPushButton()
+        btn_image.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogContentsView))
+        btn_image.setToolTip("Inserir imagem")
         btn_image.setMaximumWidth(40)
         btn_image.setToolTip("Adicionar imagem a alternativa")
         btn_image.clicked.connect(lambda checked, ti=texto_input: self._inserir_imagem_alternativa(ti))
@@ -233,25 +245,26 @@ class QuestaoFormPage(QDialog):
         self.alternativas_group.setVisible(is_objetiva)
 
     def load_fontes(self):
-        """Configura autocomplete para o campo fonte com as fontes existentes."""
+        """Carrega as fontes de questões do repositório."""
         try:
-            vestibulares = self.tag_controller.listar_vestibulares()
-            nomes = [vest['nome'] for vest in vestibulares]
-            completer = QCompleter(nomes, self)
-            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-            completer.setFilterMode(Qt.MatchFlag.MatchContains)
-            self.fonte_input.setCompleter(completer)
+            with session_manager.session_scope() as session:
+                fonte_repo = FonteQuestaoRepository(session)
+                fontes = fonte_repo.listar_todas()
+                for fonte in fontes:
+                    self.fonte_combo.addItem(fonte.nome_completo, fonte.sigla)
         except Exception as e:
             ErrorHandler.handle_exception(self, e, "Erro ao carregar fontes/vestibulares")
 
     def load_series(self):
-        """Carrega as series/niveis no dropdown."""
+        """Carrega os níveis escolares do repositório."""
         try:
-            series = self.tag_controller.listar_series()
-            for serie in series:
-                self.serie_combo.addItem(serie['nome'], serie['uuid'])
+            with session_manager.session_scope() as session:
+                nivel_repo = NivelEscolarRepository(session)
+                niveis = nivel_repo.listar_todos()
+                for nivel in niveis:
+                    self.nivel_combo.addItem(nivel.nome, nivel.codigo)
         except Exception as e:
-            ErrorHandler.handle_exception(self, e, "Erro ao carregar series")
+            ErrorHandler.handle_exception(self, e, "Erro ao carregar níveis escolares")
 
     def load_tags_tree(self):
         """Carrega a arvore de tags de conteudo usando o TagController."""
@@ -299,34 +312,56 @@ class QuestaoFormPage(QDialog):
             else:
                 self.tipo_discursiva.setChecked(True)
 
+            # Carregar fonte
+            fonte = getattr(dto, 'fonte', None)
+            if fonte:
+                if isinstance(fonte, str):
+                    # Se for string (sigla), buscar no combo
+                    idx = self.fonte_combo.findData(fonte)
+                    if idx >= 0:
+                        self.fonte_combo.setCurrentIndex(idx)
+                    else:
+                        # Se não encontrar, adicionar como texto editável
+                        self.fonte_combo.setCurrentText(fonte)
+                elif hasattr(fonte, 'sigla'):
+                    idx = self.fonte_combo.findData(fonte.sigla)
+                    if idx >= 0:
+                        self.fonte_combo.setCurrentIndex(idx)
+
+            # Carregar níveis escolares
+            niveis = getattr(dto, 'niveis', [])
+            if niveis:
+                # Por enquanto, selecionar apenas o primeiro nível
+                # TODO: Implementar seleção múltipla de níveis
+                if isinstance(niveis[0], str):
+                    idx = self.nivel_combo.findData(niveis[0])
+                    if idx >= 0:
+                        self.nivel_combo.setCurrentIndex(idx)
+                elif hasattr(niveis[0], 'codigo'):
+                    idx = self.nivel_combo.findData(niveis[0].codigo)
+                    if idx >= 0:
+                        self.nivel_combo.setCurrentIndex(idx)
+
+            # Tags - apenas tags de conteúdo
             tags = getattr(dto, 'tags', [])
             if tags:
                 tag_conteudo_uuids = []
                 for tag in tags:
                     tag_uuid = None
                     tag_numeracao = None
-                    tag_nome = None
 
                     if hasattr(tag, 'uuid'):
                         tag_uuid = tag.uuid
                         tag_numeracao = getattr(tag, 'numeracao', '') or ''
-                        tag_nome = getattr(tag, 'nome', '') or ''
                     elif isinstance(tag, dict):
                         tag_uuid = tag.get('uuid')
                         tag_numeracao = tag.get('numeracao', '') or ''
-                        tag_nome = tag.get('nome', '') or ''
 
                     if not tag_uuid:
                         continue
 
-                    if tag_numeracao.startswith('V'):
-                        if tag_nome:
-                            self.fonte_input.setText(tag_nome)
-                    elif tag_numeracao.startswith('N'):
-                        idx = self.serie_combo.findData(tag_uuid)
-                        if idx >= 0:
-                            self.serie_combo.setCurrentIndex(idx)
-                    else:
+                    # Apenas tags de conteúdo (não V* nem N*)
+                    if tag_numeracao and not tag_numeracao.startswith('V') and not tag_numeracao.startswith('N'):
                         tag_conteudo_uuids.append(tag_uuid)
 
                 self.tag_tree_widget.set_selected_tags(tag_conteudo_uuids)
@@ -336,23 +371,29 @@ class QuestaoFormPage(QDialog):
             self.close()
 
     def get_form_data(self) -> dict:
-        """Coleta e retorna os dados do formulario em um dicionario."""
+        """Coleta e retorna os dados do formulário em um dicionário."""
+        # Coletar tags de conteúdo (apenas)
         tags = self.tag_tree_widget.get_selected_tag_ids()
 
-        fonte_uuid = self._obter_ou_criar_fonte_tag()
-        if fonte_uuid:
-            tags.append(fonte_uuid)
+        # Obter fonte (sigla)
+        fonte_sigla = self.fonte_combo.currentData()
+        if not fonte_sigla:
+            # Se não houver seleção, tentar obter do texto editável
+            fonte_texto = self.fonte_combo.currentText().strip()
+            if fonte_texto:
+                fonte_sigla = self._obter_ou_criar_fonte(fonte_texto)
 
-        serie_uuid = self.serie_combo.currentData()
-        if serie_uuid:
-            tags.append(serie_uuid)
+        # Obter nível escolar (código)
+        nivel_codigo = self.nivel_combo.currentData()
+        niveis = [nivel_codigo] if nivel_codigo else []
 
         data = {
             'titulo': self.titulo_input.text().strip() or None,
             'enunciado': self.enunciado_editor.get_text(),
             'tipo': 'OBJETIVA' if self.tipo_objetiva.isChecked() else 'DISCURSIVA',
             'ano': self.ano_spin.value(),
-            'fonte': None,
+            'fonte': fonte_sigla,
+            'niveis': niveis,
             'id_dificuldade': self.difficulty_selector.get_selected_difficulty(),
             'resolucao': self.resolucao_editor.get_text() or None,
             'gabarito_discursiva': self.gabarito_editor.get_text() or None,
@@ -370,37 +411,61 @@ class QuestaoFormPage(QDialog):
                 })
         return data
 
-    def _obter_ou_criar_fonte_tag(self) -> str:
-        """Obtem o UUID da tag de fonte, criando-a se nao existir."""
-        fonte_texto = self.fonte_input.text().strip()
+    def _obter_ou_criar_fonte(self, fonte_texto: str) -> Optional[str]:
+        """
+        Obtém a sigla da fonte, criando-a se não existir.
+
+        Args:
+            fonte_texto: Nome da fonte (ex: "ENEM", "FUVEST")
+
+        Returns:
+            Sigla da fonte ou None se não conseguir criar
+        """
         if not fonte_texto:
             return None
 
-        fonte_texto = fonte_texto.upper()
-
-        tag_existente = self.tag_controller.buscar_por_nome(fonte_texto)
-        if tag_existente:
-            return tag_existente.get('uuid')
+        # Converter para maiúsculas e usar como sigla
+        fonte_sigla = fonte_texto.upper().strip()
 
         try:
-            dto = TagCreateDTO(nome=fonte_texto, id_tag_pai=None)
-            nova_tag = self.tag_controller.criar_tag(dto, tipo='VESTIBULAR')
-            if nova_tag:
-                logger.info(f"Tag de fonte '{fonte_texto}' criada automaticamente")
-                self.load_fontes()
-                return nova_tag.get('uuid')
-        except Exception as e:
-            logger.error(f"Erro ao criar tag de fonte '{fonte_texto}': {e}")
+            with session_manager.session_scope() as session:
+                fonte_repo = FonteQuestaoRepository(session)
+                # Buscar fonte existente
+                fonte = fonte_repo.buscar_por_sigla(fonte_sigla)
+                if fonte:
+                    return fonte.sigla
 
-        return None
+                # Criar nova fonte
+                from src.models.orm import FonteQuestao
+                import uuid as uuid_lib
+                nova_fonte = FonteQuestao(
+                    uuid=str(uuid_lib.uuid4()),
+                    sigla=fonte_sigla,
+                    nome_completo=fonte_texto,
+                    tipo_instituicao='VESTIBULAR',
+                    ativo=True
+                )
+                session.add(nova_fonte)
+                session.commit()
+                logger.info(f"Fonte '{fonte_texto}' criada automaticamente")
+                # Recarregar combo
+                self.load_fontes()
+                return nova_fonte.sigla
+        except Exception as e:
+            logger.error(f"Erro ao criar fonte '{fonte_texto}': {e}")
+            return None
 
     def validar_formulario(self, form_data: dict) -> tuple:
         """Valida os dados do formulario antes de salvar."""
         if not form_data.get('enunciado', '').strip():
             return False, "O enunciado da questao e obrigatorio."
 
-        if not self.fonte_input.text().strip():
-            return False, "E necessario informar uma fonte/banca para a questao."
+        # Validar fonte (obrigatório)
+        fonte_sigla = self.fonte_combo.currentData()
+        if not fonte_sigla:
+            fonte_texto = self.fonte_combo.currentText().strip()
+            if not fonte_texto:
+                return False, "É necessário informar uma fonte/banca para a questão."
 
         tags_conteudo = self.tag_tree_widget.get_selected_content_tags()
         if not tags_conteudo:
