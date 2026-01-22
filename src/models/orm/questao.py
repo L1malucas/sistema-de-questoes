@@ -44,6 +44,7 @@ class Questao(BaseModel):
 
     # Relationships N:N
     tags = relationship("Tag", secondary="questao_tag", back_populates="questoes")
+    niveis = relationship("NivelEscolar", secondary="questao_nivel", back_populates="questoes")
     listas = relationship("Lista", secondary="lista_questao", back_populates="questoes")
 
     # Relationship para versões

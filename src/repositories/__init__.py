@@ -10,6 +10,7 @@ from .lista_repository import ListaRepository
 from .dificuldade_repository import DificuldadeRepository
 from .imagem_repository import ImagemRepository
 from .fonte_questao_repository import FonteQuestaoRepository
+from .nivel_escolar_repository import NivelEscolarRepository
 from .ano_referencia_repository import AnoReferenciaRepository
 from .tipo_questao_repository import TipoQuestaoRepository
 
@@ -23,6 +24,7 @@ __all__ = [
     'DificuldadeRepository',
     'ImagemRepository',
     'FonteQuestaoRepository',
+    'NivelEscolarRepository',
     'AnoReferenciaRepository',
     'TipoQuestaoRepository',
 ]

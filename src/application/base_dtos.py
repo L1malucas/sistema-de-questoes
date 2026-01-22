@@ -134,7 +134,8 @@ class FiltroQuestaoDTO:
     tipo: Optional[str] = None
     ano_inicio: Optional[int] = None
     ano_fim: Optional[int] = None
-    fonte: Optional[str] = None
+    fonte: Optional[str] = None  # Sigla da fonte (ENEM, FUVEST, etc)
+    niveis: Optional[List[str]] = None  # Lista de códigos de níveis (EF1, EF2, EM, etc)
     dificuldade: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
+    tags: List[str] = field(default_factory=list)  # Apenas tags de conteúdo
     ativa: bool = True

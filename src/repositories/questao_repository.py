@@ -4,7 +4,8 @@ Repository para operações com Questões
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
-from models.orm import Questao, Tag, FonteQuestao, AnoReferencia, Dificuldade, TipoQuestao, CodigoGenerator
+from models.orm import Questao, Tag, FonteQuestao, AnoReferencia, Dificuldade, TipoQuestao, CodigoGenerator, NivelEscolar
+from models.orm.questao_nivel import QuestaoNivel
 from .base_repository import BaseRepository
 
 
@@ -152,6 +153,36 @@ class QuestaoRepository(BaseRepository[Questao]):
             Questao.ativo == True
         ).all()
 
+    def buscar_por_nivel(self, codigo_nivel: str) -> List[Questao]:
+        """
+        Busca questões por nível escolar
+
+        Args:
+            codigo_nivel: Código do nível (EF1, EF2, EM, EJA, TEC, SUP)
+
+        Returns:
+            Lista de questões
+        """
+        return self.session.query(Questao).join(QuestaoNivel).join(NivelEscolar).filter(
+            NivelEscolar.codigo == codigo_nivel,
+            Questao.ativo == True
+        ).all()
+
+    def buscar_por_niveis(self, codigos_niveis: List[str]) -> List[Questao]:
+        """
+        Busca questões que possuem QUALQUER um dos níveis especificados
+
+        Args:
+            codigos_niveis: Lista de códigos de níveis
+
+        Returns:
+            Lista de questões
+        """
+        return self.session.query(Questao).join(QuestaoNivel).join(NivelEscolar).filter(
+            NivelEscolar.codigo.in_(codigos_niveis),
+            Questao.ativo == True
+        ).distinct().all()
+
     def buscar_com_filtros(self, filtros: Dict[str, Any]) -> List[Questao]:
         """
         Busca questões com múltiplos filtros combinados
@@ -218,6 +249,15 @@ class QuestaoRepository(BaseRepository[Questao]):
         if filtros.get('tags'):
             for tag_uuid in filtros['tags']:
                 query = query.join(Questao.tags).filter(Tag.uuid == tag_uuid)
+
+        # Filtro por níveis escolares (OR - questão pode ter qualquer um dos níveis)
+        if filtros.get('niveis'):
+            codigos_niveis = filtros['niveis']
+            if isinstance(codigos_niveis, str):
+                codigos_niveis = [codigos_niveis]
+            query = query.join(QuestaoNivel).join(NivelEscolar).filter(
+                NivelEscolar.codigo.in_(codigos_niveis)
+            ).distinct()
 
         # Filtro por título ou enunciado
         if filtros.get('titulo'):

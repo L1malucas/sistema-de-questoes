@@ -85,6 +85,7 @@ class QuestaoService:
         enunciado: str,
         titulo: Optional[str] = None,
         fonte: Optional[str] = None,
+        niveis: Optional[List[str]] = None,
         ano: Optional[int] = None,
         dificuldade: Optional[str] = None,
         observacoes: Optional[str] = None,
@@ -137,6 +138,24 @@ class QuestaoService:
                     tag = self.tag_repo.buscar_por_nome(tag_ref)
                 if tag:
                     questao.adicionar_tag(self.session, tag)
+
+        # Adicionar níveis escolares
+        if niveis:
+            from models.orm import NivelEscolar
+            from models.orm.questao_nivel import QuestaoNivel
+            from sqlalchemy import insert
+            from datetime import datetime
+            
+            for nivel_codigo in niveis:
+                nivel = self.session.query(NivelEscolar).filter_by(codigo=nivel_codigo, ativo=True).first()
+                if nivel:
+                    self.session.execute(
+                        insert(QuestaoNivel).values(
+                            uuid_questao=questao.uuid,
+                            uuid_nivel=nivel.uuid,
+                            data_associacao=datetime.utcnow()
+                        )
+                    )
 
         # Adicionar alternativas (apenas para objetivas)
         alternativas_criadas = []
@@ -230,6 +249,7 @@ class QuestaoService:
             'fonte': questao.fonte.sigla if questao.fonte else None,
             'dificuldade': questao.dificuldade.codigo if questao.dificuldade else None,
             'observacoes': questao.observacoes,
+            'niveis': [{'uuid': nivel.uuid, 'codigo': nivel.codigo, 'nome': nivel.nome} for nivel in questao.niveis if nivel.ativo],
             'tags': [{'uuid': tag.uuid, 'nome': tag.nome, 'numeracao': tag.numeracao} for tag in questao.tags if tag.ativo],
             'alternativas': [
                 {
@@ -272,6 +292,7 @@ class QuestaoService:
                 'tipo': q.tipo.codigo if q.tipo else None,
                 'ano': q.ano.ano if q.ano else None,
                 'fonte': q.fonte.sigla if q.fonte else None,
+                'niveis': [nivel.codigo for nivel in q.niveis if nivel.ativo],
                 'dificuldade': q.dificuldade.codigo if q.dificuldade else None,
                 'tags': [tag.nome for tag in q.tags if tag.ativo],
                 'ativo': q.ativo
@@ -304,6 +325,9 @@ class QuestaoService:
 
         # Tratar tags separadamente (requerem objetos Tag, não IDs)
         tags_ids = kwargs.pop('tags', None)
+
+        # Tratar níveis separadamente
+        niveis = kwargs.pop('niveis', None)
 
         # Tratar alternativas separadamente
         alternativas_data = kwargs.pop('alternativas', None)
@@ -372,6 +396,27 @@ class QuestaoService:
                                 uuid_tag=tag.uuid
                             )
                         )
+
+        # Atualizar níveis escolares se fornecidos
+        if niveis is not None:
+            from models.orm import NivelEscolar
+            from models.orm.questao_nivel import QuestaoNivel
+            from datetime import datetime
+            
+            # Limpar níveis existentes
+            self.session.execute(delete(QuestaoNivel).where(QuestaoNivel.c.uuid_questao == questao.uuid))
+            
+            # Adicionar novos níveis
+            for nivel_codigo in niveis:
+                nivel = self.session.query(NivelEscolar).filter_by(codigo=nivel_codigo, ativo=True).first()
+                if nivel:
+                    self.session.execute(
+                        insert(QuestaoNivel).values(
+                            uuid_questao=questao.uuid,
+                            uuid_nivel=nivel.uuid,
+                            data_associacao=datetime.utcnow()
+                        )
+                    )
 
         # Atualizar alternativas se fornecidas
         tipo_atual = tipo_codigo if tipo_codigo else (questao.tipo.codigo if questao.tipo else None)

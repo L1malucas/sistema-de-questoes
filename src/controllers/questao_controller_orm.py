@@ -24,10 +24,11 @@ class QuestaoControllerORM:
                 - enunciado: Texto do enunciado (LaTeX)
                 - titulo: Título opcional
                 - fonte: Sigla da fonte (ENEM, FUVEST, etc)
+                - niveis: Lista de códigos de níveis (EF1, EF2, EM, etc)
                 - ano: Ano de referência
                 - dificuldade: 'FACIL', 'MEDIO', 'DIFICIL'
                 - observacoes: Observações opcionais
-                - tags: Lista de nomes de tags
+                - tags: Lista de nomes de tags (apenas conteúdo)
                 - alternativas: Lista de dicts (para OBJETIVA) com:
                     - letra: 'A', 'B', 'C', 'D', 'E'
                     - texto: Texto da alternativa
@@ -78,6 +79,7 @@ class QuestaoControllerORM:
                     enunciado=dados.get('enunciado'),
                     titulo=dados.get('titulo'),
                     fonte=dados.get('fonte'),
+                    niveis=dados.get('niveis', []),
                     ano=dados.get('ano'),
                     dificuldade=dados.get('dificuldade'),
                     observacoes=dados.get('observacoes'),
@@ -150,7 +152,9 @@ class QuestaoControllerORM:
         """
         try:
             with services.transaction() as svc:
-                return svc.questao.atualizar_questao(codigo, **kwargs)
+                # Separar niveis dos outros kwargs
+                niveis = kwargs.pop('niveis', None)
+                return svc.questao.atualizar_questao(codigo, niveis=niveis, **kwargs)
         except Exception as e:
             print(f"Erro ao atualizar questão: {e}")
             return None

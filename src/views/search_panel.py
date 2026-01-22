@@ -16,6 +16,8 @@ from src.controllers.adapters import criar_tag_controller
 from src.application.dtos import FiltroQuestaoDTO
 from src.utils import ErrorHandler
 from src.views.widgets import TagTreeWidget, QuestaoCard
+from src.database.session_manager import session_manager
+from src.repositories import FonteQuestaoRepository, NivelEscolarRepository
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +70,10 @@ class SearchPanel(QWidget):
         self.fonte_combo = QComboBox()
         self.fonte_combo.addItem("Todas as Fontes", None)
         main_filters_layout.addWidget(self.fonte_combo)
-        main_filters_layout.addWidget(QLabel("Série/Nível:"))
-        self.serie_combo = QComboBox()
-        self.serie_combo.addItem("Todas as Séries", None)
-        main_filters_layout.addWidget(self.serie_combo)
+        main_filters_layout.addWidget(QLabel("Nível Escolar:"))
+        self.nivel_combo = QComboBox()
+        self.nivel_combo.addItem("Todos os Níveis", None)
+        main_filters_layout.addWidget(self.nivel_combo)
         layout.addWidget(main_filters_group)
 
         # Filtros por atributos
@@ -168,22 +170,26 @@ class SearchPanel(QWidget):
             ErrorHandler.handle_exception(self, e, "Erro ao carregar tags para filtro.")
 
     def load_fontes(self):
-        """Carrega as tags de vestibular/banca para o dropdown"""
+        """Carrega as fontes de questões do repositório"""
         try:
-            vestibulares = self.tag_controller.listar_vestibulares()
-            for vest in vestibulares:
-                self.fonte_combo.addItem(vest['nome'], vest['uuid'])
+            with session_manager.session_scope() as session:
+                fonte_repo = FonteQuestaoRepository(session)
+                fontes = fonte_repo.listar_todas()
+                for fonte in fontes:
+                    self.fonte_combo.addItem(fonte.nome_completo, fonte.sigla)
         except Exception as e:
             ErrorHandler.handle_exception(self, e, "Erro ao carregar fontes/vestibulares.")
 
     def load_series(self):
-        """Carrega as séries/níveis de escolaridade para o dropdown"""
+        """Carrega os níveis escolares do repositório"""
         try:
-            series = self.tag_controller.listar_series()
-            for serie in series:
-                self.serie_combo.addItem(serie['nome'], serie['uuid'])
+            with session_manager.session_scope() as session:
+                nivel_repo = NivelEscolarRepository(session)
+                niveis = nivel_repo.listar_todos()
+                for nivel in niveis:
+                    self.nivel_combo.addItem(nivel.nome, nivel.codigo)
         except Exception as e:
-            ErrorHandler.handle_exception(self, e, "Erro ao carregar séries.")
+            ErrorHandler.handle_exception(self, e, "Erro ao carregar níveis escolares.")
 
     def show_empty_state(self):
         self.clear_results()
@@ -221,7 +227,7 @@ class SearchPanel(QWidget):
         self.ano_de_spin.setValue(2000)
         self.ano_ate_spin.setValue(datetime.now().year)
         self.fonte_combo.setCurrentIndex(0)
-        self.serie_combo.setCurrentIndex(0)
+        self.nivel_combo.setCurrentIndex(0)
         self.tag_tree_widget.clear_selection()
         self.show_empty_state()
         self.results_count_label.setText("Resultados: 0")
@@ -238,6 +244,7 @@ class SearchPanel(QWidget):
                 'ano_inicio': filtro_dto.ano_inicio,
                 'ano_fim': filtro_dto.ano_fim,
                 'fonte': filtro_dto.fonte,
+                'niveis': filtro_dto.niveis,
                 'dificuldade': filtro_dto.dificuldade,
                 'tags': filtro_dto.tags,
                 'ativa': filtro_dto.ativa
@@ -268,18 +275,15 @@ class SearchPanel(QWidget):
 
         dificuldade_texto = self.dificuldade_combo.currentData()  # Retorna o código ou None
 
-        # Coletar tags selecionadas (conteúdos)
+        # Coletar tags selecionadas (apenas conteúdos)
         tags = self.tag_tree_widget.get_selected_tag_ids()
 
-        # Adicionar vestibular/fonte selecionada às tags (se houver)
-        fonte_uuid = self.fonte_combo.currentData()
-        if fonte_uuid:
-            tags.append(fonte_uuid)
+        # Obter fonte selecionada (sigla)
+        fonte_sigla = self.fonte_combo.currentData()
 
-        # Adicionar série selecionada às tags (se houver)
-        serie_uuid = self.serie_combo.currentData()
-        if serie_uuid:
-            tags.append(serie_uuid)
+        # Obter nível selecionado (código)
+        nivel_codigo = self.nivel_combo.currentData()
+        niveis = [nivel_codigo] if nivel_codigo else None
 
         # Se incluir inativas, ativa=None (buscar todas), senão ativa=True (só ativas)
         incluir_inativas = self.incluir_inativas_check.isChecked()
@@ -290,7 +294,8 @@ class SearchPanel(QWidget):
             tipo=tipo,
             ano_inicio=ano_inicio,
             ano_fim=ano_fim,
-            fonte=None,  # Não usar mais fonte_questao, usar tags
+            fonte=fonte_sigla,
+            niveis=niveis,
             dificuldade=dificuldade_texto,
             tags=tags if tags else None,
             ativa=ativa
