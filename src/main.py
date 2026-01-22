@@ -124,7 +124,7 @@ def main():
         logger.info("Banco de dados configurado com sucesso")
 
         # Importar e criar janela principal
-        from src.views.main_window import MainWindow
+        from src.views.pages.main_window import MainWindow
         window = MainWindow()
         window.show()
 

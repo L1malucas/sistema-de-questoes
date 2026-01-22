@@ -1,0 +1,1 @@
+# src/views/components/common/__init__.py

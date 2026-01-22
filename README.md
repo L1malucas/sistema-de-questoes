@@ -299,7 +299,7 @@ TESTE CONCLUÍDO COM SUCESSO!
 
 ---
 
-## 📚 Taxonomia Matemática Pré-definida
+## 📚 TAGS Matemática Pré-definida
 
 O sistema vem com uma taxonomia matemática hierárquica:
 

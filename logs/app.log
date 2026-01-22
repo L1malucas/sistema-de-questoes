@@ -1,0 +1,505 @@
+2026-01-21 06:51:15,231 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 06:51:15,231 - __main__ - INFO - ============================================================
+2026-01-21 06:51:15,231 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 06:51:15,231 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 06:51:15,231 - __main__ - INFO - ============================================================
+2026-01-21 06:51:15,318 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 06:51:15,319 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 06:51:15,331 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 06:51:15,331 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 06:51:15,339 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 06:51:15,574 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 06:51:15,595 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 06:51:15,596 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 06:51:15,596 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 06:51:15,597 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 06:51:15,598 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 06:51:15,598 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 06:51:15,598 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 06:51:15,599 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 06:51:15,599 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 06:51:15,600 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 06:51:16,235 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 06:51:16,235 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 07:07:04,954 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:07:11,785 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:07:11,785 - __main__ - INFO - ============================================================
+2026-01-21 07:07:11,785 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:07:11,785 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:07:11,785 - __main__ - INFO - ============================================================
+2026-01-21 07:07:11,864 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:07:11,864 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:07:11,874 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:07:11,875 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:07:11,882 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:07:12,100 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:07:12,100 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:07:12,100 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:07:12,101 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:07:12,108 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:07:12,109 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:07:12,109 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:07:12,110 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:07:12,111 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:07:12,111 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:07:12,112 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:07:12,113 - __main__ - ERROR - Erro crítico na aplicação: type object 'Text' has no attribute 'NAV_LISTS'
+Traceback (most recent call last):
+  File "/Users/lucaslima/Personal/sistema de questoes/src/main.py", line 128, in main
+    window = MainWindow()
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/pages/main_window.py", line 34, in __init__
+    self.navbar = Navbar(current_page=PageEnum.DASHBOARD, parent=self)
+                  ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/navbar.py", line 140, in __init__
+    self.nav_menu = NavMenu(current_page, self)
+                    ~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/navbar.py", line 84, in __init__
+    self._add_nav_item(PageEnum.LISTS, Text.NAV_LISTS)
+                                       ^^^^^^^^^^^^^^
+AttributeError: type object 'Text' has no attribute 'NAV_LISTS'
+2026-01-21 07:07:20,650 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:14:52,508 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:14:52,508 - __main__ - INFO - ============================================================
+2026-01-21 07:14:52,508 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:14:52,508 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:14:52,508 - __main__ - INFO - ============================================================
+2026-01-21 07:14:52,656 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:14:52,656 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:14:52,667 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:14:52,667 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:14:52,674 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:14:52,959 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:14:52,960 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:14:52,960 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:14:52,960 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:14:52,961 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:14:52,962 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:14:52,962 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:14:52,962 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:14:52,964 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:14:52,964 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:14:52,964 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:14:52,973 - __main__ - ERROR - Erro crítico na aplicação: type object 'Text' has no attribute 'NAV_TAXONOMY'
+Traceback (most recent call last):
+  File "/Users/lucaslima/Personal/sistema de questoes/src/main.py", line 128, in main
+    window = MainWindow()
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/pages/main_window.py", line 34, in __init__
+    self.navbar = Navbar(current_page=PageEnum.DASHBOARD, parent=self)
+                  ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/navbar.py", line 140, in __init__
+    self.nav_menu = NavMenu(current_page, self)
+                    ~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/navbar.py", line 85, in __init__
+    self._add_nav_item(PageEnum.TAXONOMY, Text.NAV_TAXONOMY)
+                                          ^^^^^^^^^^^^^^^^^
+AttributeError: type object 'Text' has no attribute 'NAV_TAXONOMY'
+2026-01-21 07:15:59,392 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:16:01,193 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:16:01,195 - __main__ - INFO - ============================================================
+2026-01-21 07:16:01,195 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:16:01,195 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:16:01,195 - __main__ - INFO - ============================================================
+2026-01-21 07:16:01,275 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:16:01,275 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:16:01,287 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:16:01,287 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:16:01,295 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:16:01,509 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:16:01,510 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:16:01,510 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:16:01,510 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:16:01,511 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:16:01,511 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:16:01,512 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:16:01,512 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:16:01,513 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:16:01,513 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:16:01,514 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:16:01,515 - __main__ - ERROR - Erro crítico na aplicação: type object 'Text' has no attribute 'N'
+Traceback (most recent call last):
+  File "/Users/lucaslima/Personal/sistema de questoes/src/main.py", line 128, in main
+    window = MainWindow()
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/pages/main_window.py", line 34, in __init__
+    self.navbar = Navbar(current_page=PageEnum.DASHBOARD, parent=self)
+                  ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/navbar.py", line 140, in __init__
+    self.nav_menu = NavMenu(current_page, self)
+                    ~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/navbar.py", line 85, in __init__
+    self._add_nav_item(PageEnum.TAXONOMY, Text.N)
+                                          ^^^^^^
+AttributeError: type object 'Text' has no attribute 'N'
+2026-01-21 07:16:11,790 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:16:13,583 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:16:13,583 - __main__ - INFO - ============================================================
+2026-01-21 07:16:13,583 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:16:13,583 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:16:13,583 - __main__ - INFO - ============================================================
+2026-01-21 07:16:13,669 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:16:13,669 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:16:13,680 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:16:13,680 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:16:13,688 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:16:13,918 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:16:13,919 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:16:13,919 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:16:13,920 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:16:13,920 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:16:13,921 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:16:13,921 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:16:13,921 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:16:13,923 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:16:13,923 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:16:13,923 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:16:13,925 - __main__ - ERROR - Erro crítico na aplicação: type object 'Text' has no attribute 'NAV_TAXONOMY'
+Traceback (most recent call last):
+  File "/Users/lucaslima/Personal/sistema de questoes/src/main.py", line 128, in main
+    window = MainWindow()
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/pages/main_window.py", line 34, in __init__
+    self.navbar = Navbar(current_page=PageEnum.DASHBOARD, parent=self)
+                  ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/navbar.py", line 140, in __init__
+    self.nav_menu = NavMenu(current_page, self)
+                    ~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/navbar.py", line 85, in __init__
+    self._add_nav_item(PageEnum.TAXONOMY, Text.NAV_TAXONOMY)
+                                          ^^^^^^^^^^^^^^^^^
+AttributeError: type object 'Text' has no attribute 'NAV_TAXONOMY'
+2026-01-21 07:17:50,662 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:17:52,354 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:17:52,354 - __main__ - INFO - ============================================================
+2026-01-21 07:17:52,355 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:17:52,355 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:17:52,355 - __main__ - INFO - ============================================================
+2026-01-21 07:17:52,434 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:17:52,434 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:17:52,444 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:17:52,444 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:17:52,452 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:17:52,677 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:17:52,677 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:17:52,678 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:17:52,678 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:17:52,678 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:17:52,679 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:17:52,679 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:17:52,680 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:17:52,681 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:17:52,681 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:17:52,682 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:17:52,823 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:17:52,823 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:17:52,824 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:17:52,824 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:17:53,515 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 07:17:53,515 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 07:47:56,448 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:48:22,311 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:48:22,311 - __main__ - INFO - ============================================================
+2026-01-21 07:48:22,311 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:48:22,311 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:48:22,311 - __main__ - INFO - ============================================================
+2026-01-21 07:48:22,392 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:48:22,392 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:48:22,402 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:48:22,402 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:48:22,410 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:48:22,619 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:48:22,619 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:48:22,619 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:48:22,620 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:48:22,620 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:48:22,621 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:48:22,621 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:48:22,621 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:48:22,622 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:48:22,622 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:48:22,623 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:48:22,728 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:48:22,728 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:48:22,729 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:48:22,729 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:48:23,346 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 07:48:23,346 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 07:50:46,256 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:50:48,357 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:50:48,357 - __main__ - INFO - ============================================================
+2026-01-21 07:50:48,357 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:50:48,357 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:50:48,357 - __main__ - INFO - ============================================================
+2026-01-21 07:50:48,439 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:50:48,439 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:50:48,450 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:50:48,450 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:50:48,457 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:50:48,667 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:50:48,667 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:50:48,668 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:50:48,668 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:50:48,668 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:50:48,669 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:50:48,669 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:50:48,670 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:50:48,671 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:50:48,671 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:50:48,672 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:50:48,777 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:50:48,777 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:50:48,778 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:50:48,778 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:50:49,393 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 07:50:49,393 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 07:53:06,568 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:53:08,285 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:53:08,285 - __main__ - INFO - ============================================================
+2026-01-21 07:53:08,285 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:53:08,285 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:53:08,285 - __main__ - INFO - ============================================================
+2026-01-21 07:53:08,363 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:53:08,364 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:53:08,374 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:53:08,374 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:53:08,382 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:53:08,591 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:53:08,591 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:53:08,592 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:53:08,592 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:53:08,592 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:53:08,593 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:53:08,593 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:53:08,594 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:53:08,595 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:53:08,595 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:53:08,596 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:53:08,614 - __main__ - ERROR - Erro crítico na aplicação: 'Sidebar' object has no attribute '_setup_ui'
+Traceback (most recent call last):
+  File "/Users/lucaslima/Personal/sistema de questoes/src/main.py", line 128, in main
+    window = MainWindow()
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/pages/main_window.py", line 45, in __init__
+    self.sidebar = Sidebar(self)
+                   ~~~~~~~^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/sidebar.py", line 223, in __init__
+    self._setup_ui()
+    ^^^^^^^^^^^^^^
+AttributeError: 'Sidebar' object has no attribute '_setup_ui'
+2026-01-21 07:53:35,487 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:53:37,468 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:53:37,468 - __main__ - INFO - ============================================================
+2026-01-21 07:53:37,468 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:53:37,468 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:53:37,468 - __main__ - INFO - ============================================================
+2026-01-21 07:53:37,551 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:53:37,551 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:53:37,562 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:53:37,562 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:53:37,570 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:53:37,791 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:53:37,791 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:53:37,791 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:53:37,792 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:53:37,792 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:53:37,793 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:53:37,793 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:53:37,793 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:53:37,794 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:53:37,795 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:53:37,795 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:53:37,811 - __main__ - ERROR - Erro crítico na aplicação: 'Sidebar' object has no attribute 'tag_tree_view'
+Traceback (most recent call last):
+  File "/Users/lucaslima/Personal/sistema de questoes/src/main.py", line 128, in main
+    window = MainWindow()
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/pages/main_window.py", line 45, in __init__
+    self.sidebar = Sidebar(self)
+                   ~~~~~~~^^^^^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/sidebar.py", line 224, in __init__
+    self._load_tags()
+    ~~~~~~~~~~~~~~~^^
+  File "/Users/lucaslima/Personal/sistema de questoes/src/views/components/layout/sidebar.py", line 301, in _load_tags
+    self.tag_tree_view.load_tags_from_database()
+    ^^^^^^^^^^^^^^^^^^
+AttributeError: 'Sidebar' object has no attribute 'tag_tree_view'
+2026-01-21 07:55:43,614 - __main__ - INFO - Aplicação finalizada
+2026-01-21 07:56:54,200 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 07:56:54,200 - __main__ - INFO - ============================================================
+2026-01-21 07:56:54,200 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 07:56:54,200 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 07:56:54,200 - __main__ - INFO - ============================================================
+2026-01-21 07:56:54,290 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 07:56:54,291 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 07:56:54,301 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 07:56:54,302 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 07:56:54,310 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 07:56:54,557 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 07:56:54,558 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 07:56:54,558 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 07:56:54,559 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 07:56:54,559 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 07:56:54,560 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 07:56:54,561 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 07:56:54,561 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 07:56:54,562 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 07:56:54,562 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 07:56:54,563 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 07:56:54,691 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:56:54,692 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:56:54,692 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:56:54,693 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 07:56:55,323 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 07:56:55,323 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 08:44:33,565 - __main__ - INFO - Aplicação finalizada
+2026-01-21 08:44:35,794 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 08:44:35,794 - __main__ - INFO - ============================================================
+2026-01-21 08:44:35,794 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 08:44:35,794 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 08:44:35,794 - __main__ - INFO - ============================================================
+2026-01-21 08:44:35,898 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 08:44:35,898 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 08:44:35,910 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 08:44:35,910 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 08:44:35,918 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 08:44:36,162 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 08:44:36,163 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 08:44:36,163 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 08:44:36,164 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 08:44:36,164 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 08:44:36,165 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 08:44:36,165 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 08:44:36,165 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 08:44:36,166 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 08:44:36,166 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 08:44:36,167 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 08:44:36,279 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 08:44:36,279 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 08:44:36,280 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 08:44:36,281 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 08:44:36,945 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 08:44:36,945 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 08:45:15,941 - __main__ - INFO - Aplicação finalizada
+2026-01-21 08:45:17,299 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 08:45:17,299 - __main__ - INFO - ============================================================
+2026-01-21 08:45:17,299 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 08:45:17,299 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 08:45:17,299 - __main__ - INFO - ============================================================
+2026-01-21 08:45:17,376 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 08:45:17,376 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 08:45:17,386 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 08:45:17,386 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 08:45:17,390 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 08:45:17,558 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 08:45:17,558 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 08:45:17,558 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 08:45:17,558 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 08:45:17,558 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 08:45:17,559 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 08:45:17,559 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 08:45:17,559 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 08:45:17,559 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 08:45:17,559 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 08:45:17,559 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 08:45:17,660 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 08:45:17,660 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 08:45:17,661 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 08:45:17,661 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 08:45:18,299 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 08:45:18,299 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 08:52:25,482 - __main__ - INFO - Aplicação finalizada
+2026-01-21 11:31:13,493 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 11:31:13,493 - __main__ - INFO - ============================================================
+2026-01-21 11:31:13,493 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 11:31:13,493 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 11:31:13,493 - __main__ - INFO - ============================================================
+2026-01-21 11:31:13,637 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 11:31:13,637 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 11:31:13,649 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 11:31:13,649 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 11:31:13,657 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 11:31:13,928 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 11:31:13,928 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 11:31:13,928 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 11:31:13,929 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 11:31:13,929 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 11:31:13,930 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 11:31:13,930 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 11:31:13,931 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 11:31:13,932 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 11:31:13,932 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 11:31:13,932 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 11:31:14,057 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:31:14,057 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:31:14,058 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:31:14,058 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:31:14,744 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 11:31:14,744 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 11:33:33,835 - __main__ - INFO - Aplicação finalizada
+2026-01-21 11:34:18,137 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 11:34:18,137 - __main__ - INFO - ============================================================
+2026-01-21 11:34:18,137 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 11:34:18,137 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 11:34:18,137 - __main__ - INFO - ============================================================
+2026-01-21 11:34:18,241 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 11:34:18,241 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 11:34:18,251 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 11:34:18,251 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 11:34:18,259 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 11:34:18,507 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 11:34:18,508 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 11:34:18,508 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 11:34:18,508 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 11:34:18,509 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 11:34:18,510 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 11:34:18,510 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 11:34:18,510 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 11:34:18,511 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 11:34:18,512 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 11:34:18,512 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 11:34:18,639 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:34:18,639 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:34:18,640 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:34:18,640 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:34:19,284 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 11:34:19,284 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 11:36:51,506 - __main__ - INFO - Aplicação finalizada
+2026-01-21 11:36:54,076 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 11:36:54,076 - __main__ - INFO - ============================================================
+2026-01-21 11:36:54,076 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 11:36:54,076 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 11:36:54,076 - __main__ - INFO - ============================================================
+2026-01-21 11:36:54,165 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 11:36:54,165 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 11:36:54,175 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 11:36:54,175 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 11:36:54,183 - src.views.widgets - INFO - Widgets customizados carregados (via re-export)
+2026-01-21 11:36:54,410 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 11:36:54,411 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 11:36:54,411 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 11:36:54,411 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 11:36:54,412 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 11:36:54,413 - src.views.tag_manager - INFO - TagManager carregado (via re-export)
+2026-01-21 11:36:54,413 - src.views.export_dialog - INFO - ExportDialog carregado (via re-export)
+2026-01-21 11:36:54,413 - src.views.lista_form - INFO - ListaForm carregado (via re-export)
+2026-01-21 11:36:54,414 - src.views.questao_selector_dialog - INFO - QuestaoSelectorDialog carregado (via re-export)
+2026-01-21 11:36:54,414 - src.views.questao_preview - INFO - QuestaoPreview carregado (via re-export)
+2026-01-21 11:36:54,415 - src.views.main_window - INFO - MainWindow carregado (via re-export)
+2026-01-21 11:36:54,519 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:36:54,519 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:36:54,520 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:36:54,520 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-21 11:36:55,125 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 11:36:55,126 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-21 13:58:28,735 - __main__ - INFO - Aplicação finalizada
+2026-01-21 17:35:43,968 - __main__ - INFO - Logging configurado para salvar em arquivo: /Users/lucaslima/Personal/sistema de questoes/logs/app.log
+2026-01-21 17:35:43,968 - __main__ - INFO - ============================================================
+2026-01-21 17:35:43,968 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-21 17:35:43,968 - __main__ - INFO - Versão: 1.0.1
+2026-01-21 17:35:43,968 - __main__ - INFO - ============================================================
+2026-01-21 17:35:44,124 - __main__ - INFO - Configurando banco de dados...
+2026-01-21 17:35:44,124 - __main__ - INFO - Banco de dados ORM encontrado: database/sistema_questoes_v2.db
+2026-01-21 17:35:44,136 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-21 17:35:44,136 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-21 17:35:44,433 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-21 17:35:44,434 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-21 17:35:44,434 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-21 17:35:44,434 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-21 17:35:44,435 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-21 17:35:45,131 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-21 17:35:45,131 - __main__ - INFO - Entrando no loop de eventos da aplicação
