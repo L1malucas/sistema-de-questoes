@@ -1,6 +1,5 @@
 """
-Adapters para compatibilidade entre código antigo e novo ORM
+Adapters - Compatibilidade entre Controllers ORM e Views Legacy
 """
-from .questao_adapter import QuestaoAdapter, questao_adapter
 
-__all__ = ['QuestaoAdapter', 'questao_adapter']
+__all__ = []
