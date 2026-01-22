@@ -121,6 +121,11 @@ class MainWindow(QMainWindow):
         action_tags.triggered.connect(self.show_tag_panel)
         toolbar.addAction(action_tags)
 
+        action_estatisticas = QAction("Estatísticas", self)
+        action_estatisticas.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogInfoView))
+        action_estatisticas.triggered.connect(self.show_estatisticas)
+        toolbar.addAction(action_estatisticas)
+
         toolbar.addSeparator()
 
         action_backup = QAction("Backup", self)

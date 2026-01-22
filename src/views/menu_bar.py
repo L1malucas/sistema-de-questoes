@@ -41,6 +41,8 @@ class MenuBarComponent:
         self.parent = parent
         self.callbacks = callbacks
         self.menubar = parent.menuBar()
+        # No macOS, forçar menu bar a aparecer na janela (não no topo da tela)
+        self.menubar.setNativeMenuBar(False)
         self.actions = []  # Armazenar ações para garantir que atalhos funcionem
         self._create_menus()
 
