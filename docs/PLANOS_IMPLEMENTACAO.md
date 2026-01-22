@@ -9,7 +9,7 @@ Este documento contém três planos de implementação independentes para evolu�
 ### 1.1 Problema Atual
 
 Atualmente, a tabela `tag` mistura três conceitos diferentes:
-- **Tags de Conteúdo**: Taxonomia matemática (1=Números, 2=Álgebra, etc.)
+- **Tags de Conteúdo**: TAGS matemática (1=Números, 2=Álgebra, etc.)
 - **Tags de Vestibular**: Fontes de questões (V1=ENEM, V2=FUVEST, V3=UNICAMP...)
 - **Tags de Nível Escolar**: Escolaridade (N1=E.F.2, N2=E.M., N3=E.J.A.)
 

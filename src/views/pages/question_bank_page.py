@@ -227,27 +227,35 @@ class QuestionBankPage(QWidget):
 
             if filters:
                 if 'search' in filters and filters['search']:
+                    # Buscar por título ou enunciado
                     controller_filters['titulo'] = filters['search']
-                if 'fonte' in filters:
+                if 'fonte' in filters and filters['fonte']:
                     controller_filters['fonte'] = filters['fonte']
-                if 'dificuldade' in filters:
+                if 'dificuldade' in filters and filters['dificuldade']:
                     controller_filters['dificuldade'] = filters['dificuldade']
-                if 'tipo' in filters:
+                if 'tipo' in filters and filters['tipo']:
                     controller_filters['tipo'] = filters['tipo']
-                if 'tags' in filters:
+                if 'tags' in filters and filters['tags']:
+                    # Se tags é uma lista de UUIDs, converter para nomes se necessário
                     controller_filters['tags'] = filters['tags']
 
-            # Fetch questions
+            # Fetch questions from database
             self.questions_data = QuestaoControllerORM.listar_questoes(
                 controller_filters if controller_filters else None
             )
 
+            # Filtrar apenas questões ativas
+            self.questions_data = [q for q in self.questions_data if q.get('ativo', True)]
+            
             self.total_results = len(self.questions_data)
             self._update_ui()
 
         except Exception as e:
-            print(f"Error loading questions: {e}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error loading questions: {e}", exc_info=True)
             self.questions_data = []
+            self.total_results = 0
             self._update_ui()
 
     def _update_ui(self):
@@ -286,11 +294,42 @@ class QuestionBankPage(QWidget):
             item = self.grid_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+            elif item.spacerItem():
+                self.grid_layout.removeItem(item)
+
+        # Check if we have questions
+        if not self.questions_data:
+            # Show empty state message
+            empty_label = QLabel(Text.EMPTY_NO_QUESTIONS, self)
+            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_label.setStyleSheet(f"""
+                QLabel {{
+                    font-size: {Typography.FONT_SIZE_LG};
+                    color: {Color.GRAY_TEXT};
+                    padding: {Spacing.XL}px;
+                }}
+            """)
+            self.grid_layout.addWidget(empty_label, 0, 0, 1, 3)
+            return
 
         # Get current page questions
         start_idx = (self.current_page - 1) * self.page_size
         end_idx = start_idx + self.page_size
         page_questions = self.questions_data[start_idx:end_idx]
+
+        if not page_questions:
+            # No questions on this page
+            empty_label = QLabel("Nenhuma questão nesta página.", self)
+            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_label.setStyleSheet(f"""
+                QLabel {{
+                    font-size: {Typography.FONT_SIZE_LG};
+                    color: {Color.GRAY_TEXT};
+                    padding: {Spacing.XL}px;
+                }}
+            """)
+            self.grid_layout.addWidget(empty_label, 0, 0, 1, 3)
+            return
 
         # Add question cards
         row = 0
@@ -299,7 +338,15 @@ class QuestionBankPage(QWidget):
 
         for q_data in page_questions:
             card = self._create_question_card(q_data)
-            card.mousePressEvent = lambda e, uuid=q_data.get('uuid'): self._on_question_clicked(uuid)
+            # Store UUID for click handling
+            question_uuid = q_data.get('uuid')
+            if question_uuid:
+                # Create a wrapper function to capture the UUID correctly
+                def make_click_handler(uuid):
+                    def click_handler(event):
+                        self._on_question_clicked(uuid)
+                    return click_handler
+                card.mousePressEvent = make_click_handler(question_uuid)
             self.grid_layout.addWidget(card, row, col)
 
             col += 1
@@ -323,39 +370,57 @@ class QuestionBankPage(QWidget):
 
     def _create_question_card(self, q_data: Dict) -> QuestionCard:
         """Create a QuestionCard from question data."""
+        # Extract data from database response
         codigo = q_data.get('codigo', 'N/A')
-        titulo = q_data.get('titulo', q_data.get('enunciado', '')[:50] + '...')
+        titulo = q_data.get('titulo')
         enunciado = q_data.get('enunciado', '')
+        
+        # Use título if available, otherwise use first part of enunciado
+        if not titulo or not titulo.strip():
+            # Generate title from enunciado (first 60 chars)
+            titulo = enunciado[:60].strip() + ('...' if len(enunciado) > 60 else '')
+            if not titulo:
+                titulo = "Sem título"
+        
+        # Get tags (list of tag names)
         tags = q_data.get('tags', [])
-        dificuldade_str = q_data.get('dificuldade', 'MEDIO')
-
+        if isinstance(tags, list):
+            # Ensure tags are strings
+            tags = [str(tag) for tag in tags if tag]
+        else:
+            tags = []
+        
         # Map difficulty string to enum
+        dificuldade_str = q_data.get('dificuldade', 'MEDIO')
         difficulty_map = {
             'FACIL': DifficultyEnum.EASY,
             'MEDIO': DifficultyEnum.MEDIUM,
             'DIFICIL': DifficultyEnum.HARD,
             'MUITO_DIFICIL': DifficultyEnum.VERY_HARD,
         }
-        difficulty = difficulty_map.get(dificuldade_str, DifficultyEnum.MEDIUM)
+        difficulty = difficulty_map.get(dificuldade_str.upper() if dificuldade_str else 'MEDIO', DifficultyEnum.MEDIUM)
 
         # Extract LaTeX formula from enunciado if present
         formula = None
-        if '$$' in enunciado:
-            start = enunciado.find('$$')
-            end = enunciado.find('$$', start + 2)
-            if end > start:
-                formula = enunciado[start:end+2]
-        elif '$' in enunciado:
-            start = enunciado.find('$')
-            end = enunciado.find('$', start + 1)
-            if end > start:
-                formula = enunciado[start:end+1]
+        if enunciado:
+            # Look for block math ($$...$$)
+            if '$$' in enunciado:
+                start = enunciado.find('$$')
+                end = enunciado.find('$$', start + 2)
+                if end > start:
+                    formula = enunciado[start:end+2]
+            # Look for inline math ($...$)
+            elif '$' in enunciado:
+                start = enunciado.find('$')
+                end = enunciado.find('$', start + 1)
+                if end > start:
+                    formula = enunciado[start:end+1]
 
         return QuestionCard(
             question_id=f"#{codigo}",
-            title=titulo if titulo else "Sem título",
+            title=titulo,
             formula=formula,
-            tags=tags[:3] if tags else [],  # Limit to 3 tags
+            tags=tags[:3] if tags else [],  # Limit to 3 tags for display
             difficulty=difficulty,
             parent=self
         )
@@ -370,15 +435,108 @@ class QuestionBankPage(QWidget):
 
     def _on_search_changed(self, text: str):
         """Handle search input changes."""
-        self.current_filters['search'] = text
+        if text and text.strip():
+            self.current_filters['search'] = text.strip()
+        else:
+            self.current_filters.pop('search', None)
         self.current_page = 1
         self._load_data(self.current_filters)
         self.filter_changed.emit(self.current_filters)
 
     def _on_question_clicked(self, uuid: str):
         """Handle question card click."""
-        if uuid:
+        if not uuid:
+            return
+        
+        try:
+            # Find the question data to get the code
+            questao_data = None
+            for q in self.questions_data:
+                if q.get('uuid') == uuid:
+                    questao_data = q
+                    break
+            
+            if not questao_data:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Questão com UUID {uuid} não encontrada nos dados carregados")
+                return
+            
+            # Get question code
+            codigo = questao_data.get('codigo')
+            if not codigo:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Questão com UUID {uuid} não possui código")
+                return
+            
+            # Fetch complete question data from database
+            complete_data = QuestaoControllerORM.buscar_questao(codigo)
+            if not complete_data:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Questão {codigo} não encontrada no banco de dados")
+                return
+            
+            # Format data for preview (adjust format if needed)
+            preview_data = self._format_data_for_preview(complete_data)
+            
+            # Open preview dialog
+            from src.views.pages.questao_preview_page import QuestaoPreview
+            preview_dialog = QuestaoPreview(preview_data, parent=self)
+            preview_dialog.exec()
+            
+            # Emit signal for other components
             self.question_selected.emit(uuid)
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erro ao abrir preview da questão: {e}", exc_info=True)
+    
+    def _format_data_for_preview(self, questao_data: Dict) -> Dict:
+        """
+        Format question data for preview dialog.
+        Converts the format from service to what preview expects.
+        """
+        formatted = {
+            'id': questao_data.get('codigo'),
+            'codigo': questao_data.get('codigo'),
+            'uuid': questao_data.get('uuid'),
+            'titulo': questao_data.get('titulo'),
+            'tipo': questao_data.get('tipo'),
+            'enunciado': questao_data.get('enunciado', ''),
+            'ano': questao_data.get('ano'),
+            'fonte': questao_data.get('fonte'),
+            'dificuldade': questao_data.get('dificuldade'),
+            'observacoes': questao_data.get('observacoes'),
+            'alternativas': questao_data.get('alternativas', []),
+            'tags': questao_data.get('tags', [])
+        }
+        
+        # Extract resolucao from resposta dict
+        resposta = questao_data.get('resposta')
+        if resposta:
+            # For objective questions, use resolucao
+            if resposta.get('resolucao'):
+                formatted['resolucao'] = resposta.get('resolucao')
+            # For discursive questions, use gabarito_discursivo as resolucao
+            elif resposta.get('gabarito_discursivo'):
+                formatted['resolucao'] = resposta.get('gabarito_discursivo')
+        
+        # Convert tags to simple format (list of strings or dicts with 'nome')
+        tags = questao_data.get('tags', [])
+        if tags:
+            formatted_tags = []
+            for tag in tags:
+                if isinstance(tag, dict):
+                    # Keep dict format but ensure 'nome' exists
+                    formatted_tags.append(tag)
+                else:
+                    formatted_tags.append({'nome': str(tag)})
+            formatted['tags'] = formatted_tags
+        
+        return formatted
 
     def _go_prev_page(self):
         """Go to previous page."""
@@ -436,7 +594,11 @@ class QuestionBankPage(QWidget):
     def set_tag_filter(self, tag_uuid: str, tag_path: str):
         """Set tag filter from sidebar selection."""
         self.selected_tag_path = tag_path
-        self.current_filters['tags'] = [tag_uuid]
+        if tag_uuid:
+            self.current_filters['tags'] = [tag_uuid]
+        else:
+            self.current_filters.pop('tags', None)
+            self.selected_tag_path = ""
         self.current_page = 1
         self._load_data(self.current_filters)
 

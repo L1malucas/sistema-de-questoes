@@ -57,6 +57,44 @@ class TaxonomyPage(QWidget):
         stats_frame = self._create_stats_panel()
         main_layout.addWidget(stats_frame, 1)
 
+    def _create_section_header(self, icon_name: str, text: str) -> QWidget:
+        """Creates a consistent section header with an icon and text."""
+        container = QWidget(self)
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(Spacing.SM)
+
+        icon_label = QLabel(container)
+        icon = QIcon.fromTheme(icon_name)
+        # Icon size can be adjusted as needed
+        pixmap = icon.pixmap(QSize(16, 16))
+        icon_label.setPixmap(pixmap)
+        icon_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        layout.addWidget(icon_label)
+
+        text_label = QLabel(text, container)
+        text_label.setStyleSheet(f"""
+            font-size: {Typography.FONT_SIZE_MD};
+            font-weight: {Typography.FONT_WEIGHT_SEMIBOLD};
+            color: {Color.DARK_TEXT};
+        """)
+        layout.addWidget(text_label)
+
+        layout.addStretch()
+        container.setStyleSheet(f"margin-top: {Spacing.MD}px;")
+        return container
+
+    def _create_stat_label(self, icon_name: str, text: str) -> QWidget:
+        widget = QWidget(self)
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(Spacing.SM)
+        icon_label = QLabel()
+        icon_label.setPixmap(QIcon.fromTheme(icon_name).pixmap(14, 14))
+        layout.addWidget(icon_label)
+        layout.addWidget(QLabel(text))
+        return widget
+
     def _create_tree_panel(self) -> QFrame:
         """Create the tag tree panel."""
         frame = QFrame(self)
@@ -136,13 +174,7 @@ class TaxonomyPage(QWidget):
         layout.addWidget(self.edit_header_label)
 
         # Basic Information Section
-        basic_section = QLabel(f"ℹ️ {Text.TAXONOMY_BASIC_INFO}", frame)
-        basic_section.setStyleSheet(f"""
-            font-size: {Typography.FONT_SIZE_MD};
-            font-weight: {Typography.FONT_WEIGHT_SEMIBOLD};
-            color: {Color.DARK_TEXT};
-            margin-top: {Spacing.SM}px;
-        """)
+        basic_section = self._create_section_header("dialog-information", Text.TAXONOMY_BASIC_INFO)
         layout.addWidget(basic_section)
 
         # Form fields
@@ -167,13 +199,7 @@ class TaxonomyPage(QWidget):
         layout.addLayout(form_grid)
 
         # Visual Identity Section
-        visual_section = QLabel(f"🎨 {Text.TAXONOMY_VISUAL_IDENTITY}", frame)
-        visual_section.setStyleSheet(f"""
-            font-size: {Typography.FONT_SIZE_MD};
-            font-weight: {Typography.FONT_WEIGHT_SEMIBOLD};
-            color: {Color.DARK_TEXT};
-            margin-top: {Spacing.MD}px;
-        """)
+        visual_section = self._create_section_header("applications-graphics", Text.TAXONOMY_VISUAL_IDENTITY)
         layout.addWidget(visual_section)
 
         visual_grid = QGridLayout()
@@ -190,20 +216,15 @@ class TaxonomyPage(QWidget):
         layout.addLayout(visual_grid)
 
         # Associated Exams Section
-        exams_section = QLabel(f"📋 {Text.TAXONOMY_ASSOCIATED_EXAMS}", frame)
-        exams_section.setStyleSheet(f"""
-            font-size: {Typography.FONT_SIZE_MD};
-            font-weight: {Typography.FONT_WEIGHT_SEMIBOLD};
-            color: {Color.DARK_TEXT};
-            margin-top: {Spacing.MD}px;
-        """)
+        exams_section = self._create_section_header("document-properties", Text.TAXONOMY_ASSOCIATED_EXAMS)
         layout.addWidget(exams_section)
 
         self.exams_table = self._create_exams_table(frame)
         layout.addWidget(self.exams_table)
 
         # Save Button
-        save_btn = PrimaryButton(f"💾 {Text.TAXONOMY_SAVE_CHANGES}", parent=frame)
+        save_btn = PrimaryButton(Text.TAXONOMY_SAVE_CHANGES, parent=frame)
+        save_btn.setIcon(QIcon.fromTheme("document-save"))
         save_btn.clicked.connect(self._on_save_tag)
         layout.addWidget(save_btn)
 
@@ -228,28 +249,23 @@ class TaxonomyPage(QWidget):
         layout.setSpacing(Spacing.MD)
 
         # Tag Statistics Section
-        stats_label = QLabel(f"📊 {Text.TAXONOMY_TAG_STATISTICS}", frame)
-        stats_label.setStyleSheet(f"""
-            font-size: {Typography.FONT_SIZE_MD};
-            font-weight: {Typography.FONT_WEIGHT_SEMIBOLD};
-            color: {Color.DARK_TEXT};
-        """)
+        stats_label = self._create_section_header("office-chart-pie", Text.TAXONOMY_TAG_STATISTICS)
         layout.addWidget(stats_label)
 
         stats_grid = QGridLayout()
         stats_grid.setSpacing(Spacing.SM)
 
-        stats_grid.addWidget(QLabel(f"📄 {Text.STAT_QUESTIONS}:", frame), 0, 0)
+        stats_grid.addWidget(self._create_stat_label("text-plain", f"{Text.STAT_QUESTIONS}:"), 0, 0)
         self.stat_questions_label = QLabel("0", frame)
         self.stat_questions_label.setStyleSheet(f"font-weight: {Typography.FONT_WEIGHT_BOLD};")
         stats_grid.addWidget(self.stat_questions_label, 0, 1)
 
-        stats_grid.addWidget(QLabel(f"✅ {Text.STAT_AVG_SUCCESS}:", frame), 1, 0)
+        stats_grid.addWidget(self._create_stat_label("emblem-ok", f"{Text.STAT_AVG_SUCCESS}:"), 1, 0)
         self.stat_success_label = QLabel("-", frame)
         self.stat_success_label.setStyleSheet(f"font-weight: {Typography.FONT_WEIGHT_BOLD};")
         stats_grid.addWidget(self.stat_success_label, 1, 1)
 
-        stats_grid.addWidget(QLabel(f"📈 {Text.STAT_DIFFICULTY}:", frame), 2, 0)
+        stats_grid.addWidget(self._create_stat_label("office-chart-line", f"{Text.STAT_DIFFICULTY}:"), 2, 0)
         self.stat_difficulty_label = QLabel("-", frame)
         self.stat_difficulty_label.setStyleSheet(f"font-weight: {Typography.FONT_WEIGHT_BOLD};")
         stats_grid.addWidget(self.stat_difficulty_label, 2, 1)
@@ -257,13 +273,7 @@ class TaxonomyPage(QWidget):
         layout.addLayout(stats_grid)
 
         # Quick Actions Section
-        actions_label = QLabel(f"⚡ {Text.TAXONOMY_QUICK_ACTIONS}", frame)
-        actions_label.setStyleSheet(f"""
-            font-size: {Typography.FONT_SIZE_MD};
-            font-weight: {Typography.FONT_WEIGHT_SEMIBOLD};
-            color: {Color.DARK_TEXT};
-            margin-top: {Spacing.LG}px;
-        """)
+        actions_label = self._create_section_header("emblem-symbolic-link", Text.TAXONOMY_QUICK_ACTIONS)
         layout.addWidget(actions_label)
 
         merge_btn = SecondaryButton(Text.TAXONOMY_MERGE_WITH, parent=frame)
@@ -351,7 +361,7 @@ class TaxonomyPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(Spacing.XS)
 
-        icons = ["Σ", "📊", "📐", "∫", "≈", "π"]
+        icons = ["Σ", "∂", "📐", "∫", "≈", "π"]
 
         for icon in icons:
             btn = QPushButton(icon, parent)

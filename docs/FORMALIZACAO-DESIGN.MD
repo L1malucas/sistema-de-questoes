@@ -10,7 +10,7 @@
     - Estatísticas
     - Banco de Questões
     - Listas
-    - Taxonomia
+    - TAGS
   - **Área de Ação** (direita):
     - Botão contextual (varia por página)
     - Ícone de notificações
@@ -25,7 +25,7 @@ O botão muda conforme a página ativa:
 | Estatísticas | Nenhum | - | - |
 | Banco de Questões | "Criar Questão" | + | Azul primário |
 | Listas | "Criar Nova Lista" | + | Azul primário |
-| Taxonomia | "Nova Tag" | + | Azul primário |
+| TAGS | "Nova Tag" | + | Azul primário |
 
 ---
 
@@ -144,7 +144,7 @@ O fluxo possui 3 abas sequenciais:
 ## 5. Tela 3: Tags
 
 ### 5.1 Estrutura da Tela
-- **Título**: "Árvore de Taxonomia Matemática"
+- **Título**: "Árvore de TAGS Matemática"
 - **Controles**: "Expandir Tudo" | "Colapsar Tudo"
 
 ### 5.2 Tags Selecionadas (Topo)
@@ -152,7 +152,7 @@ O fluxo possui 3 abas sequenciais:
 - Tags em formato de chips com ícone X para remover
 - *Valores do BD*: tags_selecionadas[] (ex: ["Equações Quadráticas", "Álgebra"])
 
-### 5.3 Árvore de Taxonomia (Hierárquica)
+### 5.3 Árvore de TAGS (Hierárquica)
 **Estrutura de 3 níveis**:
 1. **Área Principal** 
    - *Valor do BD*: areas[] (ex: "1. Álgebra")
@@ -394,16 +394,16 @@ O fluxo possui 3 abas sequenciais:
 
 ---
 
-## 9. Gerenciador de Taxonomia
+## 9. Gerenciador de TAGS
 
 ### 9.1 Cabeçalho
 - Logo: Ícone de taxonomia
-- Título: "Gerenciador de Taxonomia"
+- Título: "Gerenciador de TAGS"
 - **Pesquisar**: "Pesquisa global..."
 - **Botão**: "+ Nova Tag"
 - Avatar do usuário: *valor do BD*: avatar_url
 
-### 9.2 Sidebar - Taxonomia Matemática
+### 9.2 Sidebar - TAGS Matemática
 - **Contador**: *valor do BD*: total_tags + " tags ativas em todos os níveis" (ex: "1.402 tags ativas em todos os níveis")
 - **Controles**: "⚡ Colapsar" | "🔽 Filtrar"
 

@@ -130,9 +130,15 @@ class QuestionEditorPage(QWidget):
         bottom_bar_layout.setSpacing(Spacing.LG)
         bottom_bar_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
-        self.status_label = QLabel("💾 Auto-saved 2 mins ago", bottom_bar_frame)
+        status_layout = QHBoxLayout()
+        status_layout.setSpacing(Spacing.SM)
+        status_icon = QLabel(bottom_bar_frame)
+        status_icon.setPixmap(QIcon.fromTheme("document-save").pixmap(12, 12))
+        self.status_label = QLabel("Auto-saved 2 mins ago", bottom_bar_frame)
         self.status_label.setStyleSheet(f"color: {Color.GRAY_TEXT}; font-size: {Typography.FONT_SIZE_XS};")
-        bottom_bar_layout.addWidget(self.status_label)
+        status_layout.addWidget(status_icon)
+        status_layout.addWidget(self.status_label)
+        bottom_bar_layout.addLayout(status_layout)
         bottom_bar_layout.addStretch()
 
         language_label = QLabel("QUESTION LANGUAGE: EN-US", bottom_bar_frame)

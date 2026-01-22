@@ -213,9 +213,9 @@ class Text:
     DIFFICULTY_VERY_HARD = "Muito Difícil"
 
     # Taxonomy
-    TAXONOMY_TITLE = "Gerenciador de Taxonomia"
-    TAXONOMY_MATH = "Taxonomia de Matemática"
-    TAXONOMY_TAGS_COUNT = "{count} tags ativas em todos os níveis"
+    TAXONOMY_TITLE = "Gerenciador de TAGS"
+    TAXONOMY_MATH = "TAGS de Matemática"
+    TAXONOMY_TAGS_COUNT = "{count} tags ativas"
     TAXONOMY_EDIT_TAG = "Editar Tag: {name}"
     TAXONOMY_BASIC_INFO = "Informações Básicas"
     TAXONOMY_VISUAL_IDENTITY = "Identidade Visual"

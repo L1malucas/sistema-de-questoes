@@ -246,7 +246,7 @@ Implementar o design conforme especificado no `FORMALIZACAO-DESIGN.MD`, componen
 | Estatísticas | `DashboardPage` | Não |
 | Banco de Questões | `QuestionBankPage` | Sim |
 | Listas | `ExamListPage` | Sim |
-| Taxonomia | `TaxonomyPage` | Sim |
+| TAGS | `TaxonomyPage` | Sim |
 
 **Entregáveis Fase 4:**
 - [ ] `src/views/pages/main_window.py` (reescrito)
@@ -439,7 +439,7 @@ Implementar o design conforme especificado no `FORMALIZACAO-DESIGN.MD`, componen
 
 ---
 
-## Fase 9: Página de Taxonomia
+## Fase 9: Página de TAGS
 
 ### 9.1 Estrutura
 **Arquivo:** `src/views/pages/taxonomy_page.py`
@@ -554,7 +554,7 @@ src/views/
 | 6 | Dashboard | Fase 4 |
 | 7 | Editor de Questão | Fases 4, 1 |
 | 8 | Listas/Provas | Fase 4 |
-| 9 | Taxonomia | Fase 4 |
+| 9 | TAGS | Fase 4 |
 | 10 | Integração | Todas |
 
 ---
