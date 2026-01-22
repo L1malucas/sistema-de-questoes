@@ -168,7 +168,7 @@ class QuestaoPreview(QDialog):
                     elif correta and isinstance(first_widget, QLabel):
                         # É um label de texto, aplicar cor verde
                         texto_atual = first_widget.text()
-                        first_widget.setText(f"<span style='color: green;'>{texto_atual}</span> ✓")
+                        first_widget.setText(f"<span style='color: green;'>{texto_atual}</span>")
                     first_line.addWidget(first_widget, 1)
                 else:
                     # Sem conteúdo, adicionar label vazio

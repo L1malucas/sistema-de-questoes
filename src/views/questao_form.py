@@ -7,9 +7,10 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QComboBox, QScrollArea, QGroupBox, QRadioButton,
     QButtonGroup, QSpinBox, QTextEdit, QTabWidget, QWidget,
-    QCheckBox, QMessageBox, QInputDialog
+    QCheckBox, QMessageBox, QInputDialog, QStyle
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
 import logging
 from typing import List
 
@@ -59,7 +60,7 @@ class QuestaoForm(QDialog):
     def init_ui(self):
         layout = QVBoxLayout(self)
         header_layout = QHBoxLayout()
-        title_label = QLabel("➕ Nova Questão" if not self.is_editing else "✏️ Editar Questão")
+        title_label = QLabel("Nova Questão" if not self.is_editing else "Editar Questão")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
@@ -160,7 +161,8 @@ class QuestaoForm(QDialog):
         tags_header_layout = QHBoxLayout()
         tags_header_layout.addWidget(QLabel("Selecione as tags que classificam esta questão:"))
         tags_header_layout.addStretch()
-        btn_criar_tag = QPushButton("➕ Criar Tag")
+        btn_criar_tag = QPushButton("Criar Tag")
+        btn_criar_tag.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
         btn_criar_tag.setToolTip("Criar uma nova tag de conteúdo")
         btn_criar_tag.clicked.connect(self.criar_tag_conteudo)
         tags_header_layout.addWidget(btn_criar_tag)
@@ -175,13 +177,16 @@ class QuestaoForm(QDialog):
         # Botões
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        btn_preview = QPushButton("👁️ Preview")
+        btn_preview = QPushButton("Preview")
+        btn_preview.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogInfoView))
         btn_preview.clicked.connect(self.show_preview)
         btn_layout.addWidget(btn_preview)
-        btn_cancel = QPushButton("❌ Cancelar")
+        btn_cancel = QPushButton("Cancelar")
+        btn_cancel.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCancelButton))
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
-        btn_save = QPushButton("💾 Salvar")
+        btn_save = QPushButton("Salvar")
+        btn_save.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
         btn_save.setStyleSheet("background-color: #1abc9c; color: white; padding: 8px 20px; border-radius: 4px; font-weight: bold;")
         btn_save.clicked.connect(self.save_questao)
         btn_layout.addWidget(btn_save)
@@ -200,7 +205,9 @@ class QuestaoForm(QDialog):
         texto_input = QLineEdit()
         texto_input.setPlaceholderText(f"Digite o texto da alternativa {letra}...")
         layout.addWidget(texto_input)
-        btn_image = QPushButton("🖼️")
+        btn_image = QPushButton()
+        btn_image.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogContentsView))
+        btn_image.setToolTip("Inserir imagem")
         btn_image.setMaximumWidth(40)
         btn_image.setToolTip("Adicionar imagem à alternativa")
         btn_image.clicked.connect(lambda checked, ti=texto_input: self._inserir_imagem_alternativa(ti))

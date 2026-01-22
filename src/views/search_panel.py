@@ -5,9 +5,10 @@ DESCRIÇÃO: Painel de busca e filtros de questões
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QComboBox, QScrollArea, QFrame, QSpinBox,
-    QGroupBox, QSplitter
+    QGroupBox, QSplitter, QStyle
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
 import logging
 
 from src.controllers.adapters import criar_questao_controller
@@ -53,7 +54,7 @@ class SearchPanel(QWidget):
         panel = QWidget()
         panel.setMaximumWidth(400)
         layout = QVBoxLayout(panel)
-        title_label = QLabel("🔍 Filtros de Busca")
+        title_label = QLabel("Filtros de Busca")
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(title_label)
 
@@ -118,11 +119,13 @@ class SearchPanel(QWidget):
         
         # Ações
         btn_layout = QHBoxLayout()
-        btn_search = QPushButton("🔍 Buscar")
+        btn_search = QPushButton("Buscar")
+        btn_search.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogStart))
         btn_search.clicked.connect(self.perform_search)
         btn_search.setStyleSheet("background-color: #1abc9c; color: white; padding: 8px; font-weight: bold; border-radius: 4px;")
         btn_layout.addWidget(btn_search)
-        btn_clear = QPushButton("🔄 Limpar")
+        btn_clear = QPushButton("Limpar")
+        btn_clear.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogResetButton))
         btn_clear.clicked.connect(self.clear_filters)
         btn_layout.addWidget(btn_clear)
         layout.addLayout(btn_layout)
@@ -137,7 +140,7 @@ class SearchPanel(QWidget):
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
         header_layout = QHBoxLayout()
-        title_label = QLabel("📋 Resultados da Busca")
+        title_label = QLabel("Resultados da Busca")
         title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
@@ -187,8 +190,11 @@ class SearchPanel(QWidget):
         empty_widget = QWidget()
         empty_layout = QVBoxLayout(empty_widget)
         empty_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_label = QLabel("🔍")
-        icon_label.setStyleSheet("font-size: 64px;")
+        icon_label = QLabel()
+        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogInfoView)
+        if not icon.isNull():
+            icon_label.setPixmap(icon.pixmap(64, 64))
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty_layout.addWidget(icon_label)
         msg_label = QLabel("Nenhuma questão encontrada")

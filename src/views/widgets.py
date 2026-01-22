@@ -1175,7 +1175,7 @@ class QuestaoCard(QFrame):
         fonte = self._get_attr(dto, 'fonte') or 'N/A'
         ano = self._get_attr(dto, 'ano') or 'N/A'
         dificuldade = self._get_attr(dto, 'dificuldade_nome') or self._get_attr(dto, 'dificuldade') or 'N/A'
-        meta_text = f"📚 {fonte} • 📅 {ano} • ⭐ {dificuldade}"
+        meta_text = f"{fonte} • {ano} • {dificuldade}"
         meta_label = QLabel(meta_text)
         meta_label.setStyleSheet("color: #777; font-size: 11px;")
         meta_layout.addWidget(meta_label)
@@ -1319,9 +1319,9 @@ class DifficultySelector(QWidget):
         layout.addWidget(label)
         self.button_group = QButtonGroup(self)
         difficulties = [
-            (1, "⭐ FÁCIL", "#4caf50"),
-            (2, "⭐⭐ MÉDIO", "#ff9800"),
-            (3, "⭐⭐⭐ DIFÍCIL", "#f44336")
+            (1, "FÁCIL", "#4caf50"),
+            (2, "MÉDIO", "#ff9800"),
+            (3, "DIFÍCIL", "#f44336")
         ]
         for diff_id, label_text, color in difficulties:
             radio = QRadioButton(label_text)

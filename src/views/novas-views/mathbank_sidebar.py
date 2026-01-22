@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QPushButton, QFrame, QScrollArea)
+                             QPushButton, QFrame, QScrollArea, QStyle)
 from PyQt6.QtCore import Qt
 
 class SidebarWidget(QWidget):
@@ -41,7 +41,8 @@ class SidebarWidget(QWidget):
         layout.addWidget(tree, 1)
         
         # Export button
-        export_btn = QPushButton("📄 Export to PDF")
+        export_btn = QPushButton("Export to PDF")
+        export_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
         export_btn.setObjectName("export_button")
         export_btn.setMinimumHeight(40)
         
@@ -111,8 +112,8 @@ class SidebarWidget(QWidget):
         # Other main items
         items = [
             ("▶", "▦", "2. Geometry"),
-            ("▶", "📈", "3. Calculus"),
-            ("▶", "📊", "4. Statistics"),
+            ("▶", "", "3. Calculus"),
+            ("▶", "", "4. Statistics"),
             ("▶", "△", "5. Trigonometry"),
         ]
         

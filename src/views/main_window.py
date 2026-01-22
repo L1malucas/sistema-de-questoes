@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QMenuBar, QMenu, QToolBar, QStatusBar, QLabel,
     QPushButton, QStackedWidget, QListWidget, QMessageBox,
-    QSplitter
+    QSplitter, QStyle
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QIcon, QKeySequence
@@ -116,7 +116,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 20, 0, 0)
 
         # Logo/Título
-        title_label = QLabel("📚 Banco de Questões")
+        title_label = QLabel("Banco de Questões")
         title_label.setStyleSheet("""
             font-size: 16px;
             font-weight: bold;
@@ -128,17 +128,18 @@ class MainWindow(QMainWindow):
 
         # Botões de navegação
         nav_buttons = [
-            ("🔍 Buscar Questões", self.show_questoes_view),
-            ("➕ Nova Questão", self.show_nova_questao),
-            ("📋 Listas", self.show_listas_view),
-            ("➕ Nova Lista", self.show_nova_lista),
-            ("🏷️ Gerenciar Tags", self.show_tag_manager),
-            ("📊 Estatísticas", self.show_estatisticas),
+            ("Buscar Questões", self.show_questoes_view, QStyle.StandardPixmap.SP_FileDialogStart),
+            ("Nova Questão", self.show_nova_questao, QStyle.StandardPixmap.SP_FileDialogNewFolder),
+            ("Listas", self.show_listas_view, QStyle.StandardPixmap.SP_FileDialogListView),
+            ("Nova Lista", self.show_nova_lista, QStyle.StandardPixmap.SP_FileDialogNewFolder),
+            ("Gerenciar Tags", self.show_tag_manager, QStyle.StandardPixmap.SP_FileDialogDetailedView),
+            ("Estatísticas", self.show_estatisticas, QStyle.StandardPixmap.SP_FileDialogInfoView),
         ]
 
         self.nav_buttons = {}
-        for text, callback in nav_buttons:
+        for text, callback, icon_pixmap in nav_buttons:
             btn = QPushButton(text)
+            btn.setIcon(self.style().standardIcon(icon_pixmap))
             btn.clicked.connect(callback)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             layout.addWidget(btn)
@@ -241,27 +242,32 @@ class MainWindow(QMainWindow):
         self.addToolBar(toolbar)
 
         # Ações rápidas
-        action_nova_questao = QAction("➕ Nova Questão", self)
+        action_nova_questao = QAction("Nova Questão", self)
+        action_nova_questao.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
         action_nova_questao.triggered.connect(self.show_nova_questao)
         toolbar.addAction(action_nova_questao)
 
-        action_nova_lista = QAction("📋 Nova Lista", self)
+        action_nova_lista = QAction("Nova Lista", self)
+        action_nova_lista.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
         action_nova_lista.triggered.connect(self.show_nova_lista)
         toolbar.addAction(action_nova_lista)
 
         toolbar.addSeparator()
 
-        action_buscar = QAction("🔍 Buscar", self)
+        action_buscar = QAction("Buscar", self)
+        action_buscar.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogStart))
         action_buscar.triggered.connect(self.show_questoes_view)
         toolbar.addAction(action_buscar)
 
-        action_tags = QAction("🏷️ Tags", self)
+        action_tags = QAction("Tags", self)
+        action_tags.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView))
         action_tags.triggered.connect(self.show_tag_manager)
         toolbar.addAction(action_tags)
 
         toolbar.addSeparator()
 
-        action_backup = QAction("💾 Backup", self)
+        action_backup = QAction("Backup", self)
+        action_backup.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
         action_backup.triggered.connect(self.fazer_backup)
         toolbar.addAction(action_backup)
 
@@ -350,14 +356,14 @@ class MainWindow(QMainWindow):
         """Exibe tela de estatísticas"""
         logger.info("Navegando para: Estatísticas")
         self.status_label.setText("Visualizando estatísticas")
-        self.show_placeholder("📊 Tela de Estatísticas",
+        self.show_placeholder("Tela de Estatísticas",
                              "Aqui você verá estatísticas do banco de questões")
 
     def show_configuracoes(self):
         """Abre tela de configurações"""
         logger.info("Navegando para: Configurações")
         self.status_label.setText("Configurações do sistema")
-        self.show_placeholder("⚙️ Configurações",
+        self.show_placeholder("Configurações",
                              "Painel de configurações do sistema será exibido aqui")
 
     def show_sobre(self):
@@ -369,7 +375,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(sobre_widget)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        title_label = QLabel("📚 Sistema de Banco de Questões Educacionais")
+        title_label = QLabel("Sistema de Banco de Questões Educacionais")
         title_label.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
@@ -526,7 +532,7 @@ class MainWindow(QMainWindow):
         logger.info("Navegando para: Backup")
         self.status_label.setText("Gerenciando backups")
         # TODO: Implementar lógica de backup
-        self.show_placeholder("💾 Backup",
+        self.show_placeholder("Backup",
                              "Interface de backup do banco de dados será exibida aqui")
 
     def restaurar_backup(self):
@@ -534,7 +540,7 @@ class MainWindow(QMainWindow):
         logger.info("Navegando para: Restaurar Backup")
         self.status_label.setText("Restaurando backup")
         # TODO: Implementar lógica de restauração
-        self.show_placeholder("♻️ Restaurar Backup",
+        self.show_placeholder("Restaurar Backup",
                              "Interface de restauração de backup será exibida aqui")
 
     def update_status_counts(self, questoes_count=0, listas_count=0):

@@ -12,9 +12,11 @@ COMPONENTES:
 
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTreeWidget, QTreeWidgetItem, QMessageBox, QGroupBox, QInputDialog
+    QTreeWidget, QTreeWidgetItem, QMessageBox, QGroupBox, QInputDialog,
+    QStyle
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 import logging
 from typing import List
 
@@ -52,7 +54,7 @@ class TagManager(QDialog):
         """Configura a interface"""
         layout = QVBoxLayout(self)
 
-        header = QLabel("🏷️ Gerenciamento de Tags Hierárquicas")
+        header = QLabel("Gerenciamento de Tags Hierárquicas")
         header.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(header)
 
@@ -86,23 +88,27 @@ class TagManager(QDialog):
         actions_layout.addWidget(self.info_label)
         actions_layout.addSpacing(20)
 
-        btn_nova = QPushButton("➕ Nova Tag")
+        btn_nova = QPushButton("Nova Tag")
+        btn_nova.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder))
         btn_nova.clicked.connect(self.criar_tag)
         btn_nova.setStyleSheet("background-color: #1abc9c; color: white; padding: 10px; font-weight: bold; border-radius: 4px;")
         actions_layout.addWidget(btn_nova)
 
-        self.btn_editar = QPushButton("✏️ Editar Nome")
+        self.btn_editar = QPushButton("Editar Nome")
+        self.btn_editar.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView))
         self.btn_editar.clicked.connect(self.editar_tag)
         self.btn_editar.setEnabled(False)
         actions_layout.addWidget(self.btn_editar)
 
-        self.btn_inativar = QPushButton("🚫 Inativar")
+        self.btn_inativar = QPushButton("Inativar")
+        self.btn_inativar.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCancelButton))
         self.btn_inativar.clicked.connect(self.inativar_tag)
         self.btn_inativar.setEnabled(False)
         self.btn_inativar.setStyleSheet("color: #e67e22;")
         actions_layout.addWidget(self.btn_inativar)
 
-        self.btn_reativar = QPushButton("✅ Reativar")
+        self.btn_reativar = QPushButton("Reativar")
+        self.btn_reativar.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogApplyButton))
         self.btn_reativar.clicked.connect(self.reativar_tag)
         self.btn_reativar.setEnabled(False)
         self.btn_reativar.setStyleSheet("color: #27ae60;")
@@ -111,7 +117,8 @@ class TagManager(QDialog):
 
         actions_layout.addSpacing(20)
 
-        self.btn_toggle_inativas = QPushButton("👁️ Ver Tags Inativas")
+        self.btn_toggle_inativas = QPushButton("Ver Tags Inativas")
+        self.btn_toggle_inativas.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogListView))
         self.btn_toggle_inativas.clicked.connect(self.toggle_visualizacao_inativas)
         self.btn_toggle_inativas.setStyleSheet("color: #7f8c8d;")
         actions_layout.addWidget(self.btn_toggle_inativas)
@@ -122,7 +129,8 @@ class TagManager(QDialog):
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        btn_close = QPushButton("✔️ Fechar")
+        btn_close = QPushButton("Fechar")
+        btn_close.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOkButton))
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
         layout.addLayout(btn_layout)
@@ -386,12 +394,12 @@ class TagManager(QDialog):
         self.mostrando_inativas = not self.mostrando_inativas
 
         if self.mostrando_inativas:
-            self.btn_toggle_inativas.setText("👁️ Ver Tags Ativas")
+            self.btn_toggle_inativas.setText("Ver Tags Ativas")
             self.btn_toggle_inativas.setStyleSheet("color: #27ae60;")
             self.btn_reativar.setVisible(True)
             self.btn_inativar.setVisible(False)
         else:
-            self.btn_toggle_inativas.setText("👁️ Ver Tags Inativas")
+            self.btn_toggle_inativas.setText("Ver Tags Inativas")
             self.btn_toggle_inativas.setStyleSheet("color: #7f8c8d;")
             self.btn_reativar.setVisible(False)
             self.btn_inativar.setVisible(True)
