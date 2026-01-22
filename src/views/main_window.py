@@ -356,8 +356,13 @@ class MainWindow(QMainWindow):
         """Exibe tela de estatísticas"""
         logger.info("Navegando para: Estatísticas")
         self.status_label.setText("Visualizando estatísticas")
-        self.show_placeholder("Tela de Estatísticas",
-                             "Aqui você verá estatísticas do banco de questões")
+
+        if not hasattr(self, 'estatisticas_panel'):
+            from src.views.estatisticas_panel import EstatisticasPanel
+            self.estatisticas_panel = EstatisticasPanel(self)
+            self.stacked_widget.addWidget(self.estatisticas_panel)
+
+        self.stacked_widget.setCurrentWidget(self.estatisticas_panel)
 
     def show_configuracoes(self):
         """Abre tela de configurações"""
