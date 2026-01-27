@@ -1,7 +1,7 @@
 """Repository para Dificuldades"""
 from typing import Optional
 from sqlalchemy.orm import Session
-from models.orm import Dificuldade
+from src.models.orm import Dificuldade
 from .base_repository import BaseRepository
 
 class DificuldadeRepository(BaseRepository[Dificuldade]):

@@ -1,7 +1,7 @@
 """Repository para Imagens (com deduplicação por hash MD5)"""
 from typing import Optional, Dict
 from sqlalchemy.orm import Session
-from models.orm import Imagem
+from src.models.orm import Imagem
 from .base_repository import BaseRepository
 
 class ImagemRepository(BaseRepository[Imagem]):

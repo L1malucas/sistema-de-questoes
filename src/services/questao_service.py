@@ -3,7 +3,7 @@ Service para gerenciar Questões - usa apenas ORM
 """
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from repositories import (
+from src.repositories import (
     QuestaoRepository,
     AlternativaRepository,
     RespostaQuestaoRepository,
@@ -330,25 +330,25 @@ class QuestaoService:
 
         # Atualizar relacionamentos usando UUIDs de foreign keys
         if tipo_codigo:
-            from models.orm import TipoQuestao
+            from src.models.orm import TipoQuestao
             tipo = self.session.query(TipoQuestao).filter_by(codigo=tipo_codigo, ativo=True).first()
             if tipo:
                 questao.uuid_tipo_questao = tipo.uuid
 
         if fonte_sigla:
-            from models.orm import FonteQuestao
+            from src.models.orm import FonteQuestao
             fonte = self.session.query(FonteQuestao).filter_by(sigla=fonte_sigla, ativo=True).first()
             if fonte:
                 questao.uuid_fonte = fonte.uuid
 
         if ano_valor:
-            from models.orm import AnoReferencia
+            from src.models.orm import AnoReferencia
             ano = AnoReferencia.criar_ou_obter(self.session, ano_valor)
             if ano:
                 questao.uuid_ano_referencia = ano.uuid
 
         if dificuldade_codigo:
-            from models.orm import Dificuldade
+            from src.models.orm import Dificuldade
             dificuldade = self.session.query(Dificuldade).filter_by(codigo=dificuldade_codigo, ativo=True).first()
             if dificuldade:
                 questao.uuid_dificuldade = dificuldade.uuid
@@ -356,7 +356,7 @@ class QuestaoService:
         # Atualizar tags se fornecidas (tags_ids são UUIDs de tags)
         if tags_ids is not None and isinstance(tags_ids, list):
             # Limpar tags existentes usando SQL direto
-            from models.orm import QuestaoTag
+            from src.models.orm import QuestaoTag
             from sqlalchemy import delete, insert
             self.session.execute(delete(QuestaoTag).where(QuestaoTag.c.uuid_questao == questao.uuid))
 

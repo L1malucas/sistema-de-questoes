@@ -1,7 +1,7 @@
 """Repository para Tipos de Questões"""
 from typing import Optional
 from sqlalchemy.orm import Session
-from models.orm import TipoQuestao
+from src.models.orm import TipoQuestao
 from .base_repository import BaseRepository
 
 class TipoQuestaoRepository(BaseRepository[TipoQuestao]):

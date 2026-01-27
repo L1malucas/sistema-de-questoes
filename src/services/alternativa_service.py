@@ -3,7 +3,7 @@ Service para gerenciar Alternativas - usa apenas ORM
 """
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from repositories import AlternativaRepository, QuestaoRepository
+from src.repositories import AlternativaRepository, QuestaoRepository
 
 
 class AlternativaService:

@@ -3,7 +3,7 @@ Base Repository para operações comuns de banco de dados
 """
 from typing import TypeVar, Generic, Optional, List, Type
 from sqlalchemy.orm import Session
-from models.orm.base import Base
+from src.models.orm.base import Base
 
 T = TypeVar('T', bound=Base)
 

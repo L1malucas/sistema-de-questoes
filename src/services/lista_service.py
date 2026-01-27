@@ -3,7 +3,7 @@ Service para gerenciar Listas - usa apenas ORM
 """
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from repositories import ListaRepository, QuestaoRepository
+from src.repositories import ListaRepository, QuestaoRepository
 
 
 class ListaService:

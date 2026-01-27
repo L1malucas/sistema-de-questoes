@@ -1,7 +1,7 @@
 """Repository para Fontes de Questões"""
 from typing import Optional
 from sqlalchemy.orm import Session
-from models.orm import FonteQuestao
+from src.models.orm import FonteQuestao
 from .base_repository import BaseRepository
 
 class FonteQuestaoRepository(BaseRepository[FonteQuestao]):

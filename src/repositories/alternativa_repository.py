@@ -1,7 +1,7 @@
 """Repository para Alternativas"""
 from typing import List
 from sqlalchemy.orm import Session
-from models.orm import Alternativa, Questao
+from src.models.orm import Alternativa, Questao
 from .base_repository import BaseRepository
 
 class AlternativaRepository(BaseRepository[Alternativa]):

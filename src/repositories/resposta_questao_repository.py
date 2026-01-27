@@ -3,7 +3,7 @@ Repository para Respostas de Questões (Unificado)
 """
 from typing import Optional
 from sqlalchemy.orm import Session
-from models.orm import RespostaQuestao, Questao
+from src.models.orm import RespostaQuestao, Questao
 from .base_repository import BaseRepository
 
 

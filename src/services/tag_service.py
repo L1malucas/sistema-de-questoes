@@ -3,7 +3,7 @@ Service para gerenciar Tags - usa apenas ORM
 """
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from repositories import TagRepository
+from src.repositories import TagRepository
 
 
 class TagService:

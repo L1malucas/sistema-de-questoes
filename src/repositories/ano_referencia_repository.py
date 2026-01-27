@@ -1,7 +1,7 @@
 """Repository para Anos de Referência"""
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from models.orm import AnoReferencia
+from src.models.orm import AnoReferencia
 from .base_repository import BaseRepository
 
 class AnoReferenciaRepository(BaseRepository[AnoReferencia]):
