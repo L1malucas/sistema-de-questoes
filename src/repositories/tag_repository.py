@@ -1,13 +1,80 @@
 """Repository para Tags"""
-from typing import List, Optional
+import logging
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from models.orm import Tag
+
+from src.infrastructure.logging import get_audit_logger, get_metrics_collector
+from src.models.orm import Tag
 from .base_repository import BaseRepository
 
 class TagRepository(BaseRepository[Tag]):
     def __init__(self, session: Session):
         super().__init__(Tag, session)
+        self._audit = get_audit_logger()
+        self._metrics = get_metrics_collector()
+        self._logger = logging.getLogger(__name__)
     
+    def criar(self, **kwargs) -> Optional[Tag]:
+        """Cria uma nova tag com auditoria e métricas."""
+        try:
+            tag = super().criar(**kwargs)
+            if tag and self._audit:
+                self._audit.tag_criada(
+                    tag_id=str(tag.uuid),
+                    nome=tag.nome,
+                    numeracao=tag.numeracao
+                )
+            if self._metrics:
+                self._metrics.increment("tags_criadas")
+            return tag
+        except Exception as e:
+            self._logger.error(f"Erro ao criar tag: {e}", exc_info=True)
+            if self._metrics:
+                self._metrics.increment("erros_criar_tag")
+            return None
+
+    def atualizar(self, uuid: str, **kwargs) -> Optional[Tag]:
+        """Atualiza uma tag com auditoria e métricas."""
+        try:
+            tag_antiga = self.buscar_por_uuid(uuid)
+            tag_atualizada = super().atualizar(uuid, **kwargs)
+            if tag_atualizada and self._audit:
+                campos_alterados = [k for k in kwargs if getattr(tag_antiga, k) != kwargs[k]]
+                if campos_alterados:
+                    self._audit.tag_editada(
+                        tag_id=str(tag_atualizada.uuid),
+                        campos_alterados=campos_alterados
+                    )
+            if self._metrics:
+                self._metrics.increment("tags_atualizadas")
+            return tag_atualizada
+        except Exception as e:
+            self._logger.error(f"Erro ao atualizar tag {uuid}: {e}", exc_info=True)
+            if self._metrics:
+                self._metrics.increment("erros_atualizar_tag")
+            return None
+    
+    def desativar(self, uuid: str) -> bool:
+        """Desativa uma tag (soft delete) com auditoria e métricas."""
+        try:
+            tag = self.buscar_por_uuid(uuid)
+            if tag and tag.ativo:
+                resultado = super().desativar(uuid)
+                if resultado and self._audit:
+                    self._audit.tag_deletada(
+                        tag_id=str(tag.uuid),
+                        nome=tag.nome
+                    )
+                if self._metrics:
+                    self._metrics.increment("tags_desativadas")
+                return resultado
+            return False
+        except Exception as e:
+            self._logger.error(f"Erro ao desativar tag {uuid}: {e}", exc_info=True)
+            if self._metrics:
+                self._metrics.increment("erros_desativar_tag")
+            return False
+
     def buscar_por_nome(self, nome: str) -> Optional[Tag]:
         return self.session.query(Tag).filter_by(nome=nome, ativo=True).first()
     
@@ -88,3 +155,4 @@ class TagRepository(BaseRepository[Tag]):
                 pass
 
         return max(numeros) if numeros else 0
+

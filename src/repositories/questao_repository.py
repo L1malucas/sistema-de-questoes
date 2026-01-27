@@ -1,10 +1,13 @@
 """
 Repository para operações com Questões
 """
+import logging
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
-from models.orm import Questao, Tag, FonteQuestao, AnoReferencia, Dificuldade, TipoQuestao, CodigoGenerator
+
+from src.infrastructure.logging import get_audit_logger, get_metrics_collector
+from src.models.orm import Questao, Tag, FonteQuestao, AnoReferencia, Dificuldade, TipoQuestao, CodigoGenerator
 from .base_repository import BaseRepository
 
 
@@ -13,6 +16,9 @@ class QuestaoRepository(BaseRepository[Questao]):
 
     def __init__(self, session: Session):
         super().__init__(Questao, session)
+        self._audit = get_audit_logger()
+        self._metrics = get_metrics_collector()
+        self._logger = logging.getLogger(__name__)
 
     def buscar_por_codigo(self, codigo: str, incluir_inativos: bool = False) -> Optional[Questao]:
         """
@@ -242,24 +248,56 @@ class QuestaoRepository(BaseRepository[Questao]):
         observacoes: Optional[str] = None,
         uuid_imagem_enunciado: Optional[str] = None,
         escala_imagem_enunciado: Optional[float] = 1.0
+    ) -> Optional[Questao]:
+        """
+        Cria uma questão completa com todas as relações, com logging e métricas.
+        """
+        try:
+            questao = None
+            if self._metrics:
+                with self._metrics.time_operation("criar_questao_completa"):
+                    questao = self._criar_questao_completa_interno(
+                        codigo_tipo, enunciado, titulo, sigla_fonte, ano,
+                        codigo_dificuldade, observacoes, uuid_imagem_enunciado,
+                        escala_imagem_enunciado
+                    )
+            else:
+                questao = self._criar_questao_completa_interno(
+                    codigo_tipo, enunciado, titulo, sigla_fonte, ano,
+                    codigo_dificuldade, observacoes, uuid_imagem_enunciado,
+                    escala_imagem_enunciado
+                )
+
+            if questao and self._audit:
+                self._audit.questao_criada(
+                    questao_id=str(questao.uuid),
+                    titulo=questao.titulo or "",
+                    tipo=codigo_tipo
+                )
+            
+            if self._metrics:
+                self._metrics.increment("questoes_criadas")
+            
+            return questao
+
+        except Exception as e:
+            self._logger.error(f"Erro ao criar questão completa: {e}", exc_info=True)
+            if self._metrics:
+                self._metrics.increment("erros_criar_questao")
+            return None
+
+    def _criar_questao_completa_interno(
+        self,
+        codigo_tipo: str,
+        enunciado: str,
+        titulo: Optional[str] = None,
+        sigla_fonte: Optional[str] = None,
+        ano: Optional[int] = None,
+        codigo_dificuldade: Optional[str] = None,
+        observacoes: Optional[str] = None,
+        uuid_imagem_enunciado: Optional[str] = None,
+        escala_imagem_enunciado: Optional[float] = 1.0
     ) -> Questao:
-        """
-        Cria uma questão completa com todas as relações
-
-        Args:
-            codigo_tipo: OBJETIVA ou DISCURSIVA
-            enunciado: Enunciado da questão
-            titulo: Título opcional
-            sigla_fonte: Sigla da fonte
-            ano: Ano de referência
-            codigo_dificuldade: FACIL, MEDIO ou DIFICIL
-            observacoes: Observações
-            uuid_imagem_enunciado: UUID da imagem
-            escala_imagem_enunciado: Escala da imagem
-
-        Returns:
-            Questão criada
-        """
         # Gerar código legível
         codigo = CodigoGenerator.gerar_codigo_questao(self.session, ano)
 
@@ -301,40 +339,60 @@ class QuestaoRepository(BaseRepository[Questao]):
         return questao
 
     def adicionar_tag(self, codigo_questao: str, nome_tag: str) -> bool:
-        """
-        Adiciona uma tag à questão
-
-        Args:
-            codigo_questao: Código da questão
-            nome_tag: Nome da tag
-
-        Returns:
-            True se adicionado, False caso contrário
-        """
+        """Adiciona uma tag à questão com auditoria."""
         questao = self.buscar_por_codigo(codigo_questao)
         tag = self.session.query(Tag).filter_by(nome=nome_tag, ativo=True).first()
 
         if questao and tag:
             questao.adicionar_tag(self.session, tag)
+            if self._audit:
+                self._audit.questao_editada(
+                    questao_id=str(questao.uuid),
+                    campos_alterados=[f"add_tag_{nome_tag}"]
+                )
+            if self._metrics:
+                self._metrics.increment("questoes_tags_adicionadas")
             return True
         return False
 
     def remover_tag(self, codigo_questao: str, nome_tag: str) -> bool:
-        """
-        Remove uma tag da questão
-
-        Args:
-            codigo_questao: Código da questão
-            nome_tag: Nome da tag
-
-        Returns:
-            True se removido, False caso contrário
-        """
+        """Remove uma tag da questão com auditoria."""
         questao = self.buscar_por_codigo(codigo_questao)
         tag = self.session.query(Tag).filter_by(nome=nome_tag).first()
 
         if questao and tag:
             questao.remover_tag(self.session, tag)
+            if self._audit:
+                self._audit.questao_editada(
+                    questao_id=str(questao.uuid),
+                    campos_alterados=[f"remove_tag_{nome_tag}"]
+                )
+            if self._metrics:
+                self._metrics.increment("questoes_tags_removidas")
+            return True
+        return False
+
+    def inativar(self, questao_uuid: str, motivo: str = "N/A") -> bool:
+        """Inativa uma questão com auditoria."""
+        questao = self.buscar_por_uuid(questao_uuid)
+        if questao and questao.ativo:
+            questao.ativo = False
+            if self._audit:
+                self._audit.questao_inativada(questao_id=str(questao.uuid), motivo=motivo)
+            if self._metrics:
+                self._metrics.increment("questoes_inativadas")
+            return True
+        return False
+
+    def reativar(self, questao_uuid: str) -> bool:
+        """Reativa uma questão com auditoria."""
+        questao = self.buscar_por_uuid(questao_uuid, incluir_inativos=True)
+        if questao and not questao.ativo:
+            questao.ativo = True
+            if self._audit:
+                self._audit.questao_reativada(questao_id=str(questao.uuid))
+            if self._metrics:
+                self._metrics.increment("questoes_reativadas")
             return True
         return False
 
