@@ -6,6 +6,7 @@ from .mongo_handler import MongoDBHandler, create_mongo_handler
 from .audit_logger import AuditLogger, AcaoAuditoria, EventoAuditoria, init_audit_logger, get_audit_logger
 from .error_reporter import ErrorReporter, init_error_reporter, get_error_reporter
 from .metrics_collector import MetricsCollector, init_metrics_collector, get_metrics_collector
+from .setup_indexes import setup_mongodb_indexes, list_indexes
 
 __all__ = [
     "get_machine_id",
@@ -22,4 +23,6 @@ __all__ = [
     "MetricsCollector",
     "init_metrics_collector",
     "get_metrics_collector",
+    "setup_mongodb_indexes",
+    "list_indexes",
 ]

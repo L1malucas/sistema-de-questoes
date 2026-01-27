@@ -92,8 +92,10 @@ def setup_logging():
         # Handler de encerramento para registrar o fim da sessão
         def on_exit():
             try:
-                if metrics:
-                    duration = (metrics._session_start - metrics._session_start).total_seconds() if metrics._session_start else 0
+                if metrics and metrics._session_start:
+                    from datetime import datetime, timezone
+                    session_end = datetime.now(timezone.utc)
+                    duration = (session_end - metrics._session_start).total_seconds()
                     audit.sessao_encerrada(int(duration))
                     metrics.end_session()
                     logging.info("Sessão de métricas e auditoria finalizada e enviada.")

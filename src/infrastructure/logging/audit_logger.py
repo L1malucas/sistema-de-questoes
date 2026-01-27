@@ -147,7 +147,14 @@ class AuditLogger:
             entidade_id=questao_id,
             detalhes={"motivo": motivo}
         ))
-    
+
+    def questao_reativada(self, questao_id: str) -> bool:
+        return self.log(EventoAuditoria(
+            acao=AcaoAuditoria.QUESTAO_REATIVADA,
+            entidade="questao",
+            entidade_id=questao_id
+        ))
+
     # Atalhos para listas
     def lista_criada(self, lista_id: str, titulo: str, qtd_questoes: int) -> bool:
         return self.log(EventoAuditoria(
@@ -164,7 +171,48 @@ class AuditLogger:
             entidade_id=lista_id,
             detalhes={"formato": formato, "qtd_questoes": qtd_questoes}
         ))
-    
+
+    def lista_editada(self, lista_id: str, campos_alterados: list) -> bool:
+        return self.log(EventoAuditoria(
+            acao=AcaoAuditoria.LISTA_EDITADA,
+            entidade="lista",
+            entidade_id=lista_id,
+            detalhes={"campos_alterados": campos_alterados}
+        ))
+
+    def lista_deletada(self, lista_id: str, titulo: str = None) -> bool:
+        return self.log(EventoAuditoria(
+            acao=AcaoAuditoria.LISTA_DELETADA,
+            entidade="lista",
+            entidade_id=lista_id,
+            detalhes={"titulo": titulo}
+        ))
+
+    # Atalhos para tags
+    def tag_criada(self, tag_id: str, nome: str, numeracao: str = None) -> bool:
+        return self.log(EventoAuditoria(
+            acao=AcaoAuditoria.TAG_CRIADA,
+            entidade="tag",
+            entidade_id=tag_id,
+            detalhes={"nome": nome, "numeracao": numeracao}
+        ))
+
+    def tag_editada(self, tag_id: str, campos_alterados: list) -> bool:
+        return self.log(EventoAuditoria(
+            acao=AcaoAuditoria.TAG_EDITADA,
+            entidade="tag",
+            entidade_id=tag_id,
+            detalhes={"campos_alterados": campos_alterados}
+        ))
+
+    def tag_deletada(self, tag_id: str, nome: str = None) -> bool:
+        return self.log(EventoAuditoria(
+            acao=AcaoAuditoria.TAG_DELETADA,
+            entidade="tag",
+            entidade_id=tag_id,
+            detalhes={"nome": nome}
+        ))
+
     # Atalhos para sistema
     def sessao_iniciada(self) -> bool:
         return self.log(EventoAuditoria(
