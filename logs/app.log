@@ -503,3 +503,28 @@ AttributeError: 'Sidebar' object has no attribute 'tag_tree_view'
 2026-01-21 17:35:44,435 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
 2026-01-21 17:35:45,131 - __main__ - INFO - Sistema inicializado com sucesso!
 2026-01-21 17:35:45,131 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-27 10:50:15,574 - __main__ - INFO - Logging configurado para salvar em arquivo: C:\Users\lucas.LUCAS\sistema-de-questoes\logs\app.log
+2026-01-27 10:50:15,574 - __main__ - INFO - ============================================================
+2026-01-27 10:50:15,574 - __main__ - INFO - INICIANDO SISTEMA DE BANCO DE QUESTÕES EDUCACIONAIS
+2026-01-27 10:50:15,575 - __main__ - INFO - Versão: 1.0.1
+2026-01-27 10:50:15,575 - __main__ - INFO - ============================================================
+2026-01-27 10:50:15,621 - __main__ - INFO - Configurando banco de dados...
+2026-01-27 10:50:15,622 - __main__ - INFO - Banco de dados ORM encontrado: database\sistema_questoes_v2.db
+2026-01-27 10:50:15,642 - __main__ - INFO - Conexão com banco de dados ORM validada
+2026-01-27 10:50:15,642 - __main__ - INFO - Banco de dados configurado com sucesso
+2026-01-27 10:50:17,278 - src.utils.error_handler - INFO - ErrorHandler carregado
+2026-01-27 10:50:17,279 - src.views.pages.tag_manager_page - INFO - TagManager carregado
+2026-01-27 10:50:17,280 - src.views.pages.export_page - INFO - ExportDialog carregado
+2026-01-27 10:50:17,283 - src.views.pages.lista_form_page - INFO - ListaForm carregado
+2026-01-27 10:50:17,283 - src.views.pages.questao_preview_page - INFO - QuestaoPreview carregado
+2026-01-27 10:50:17,402 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-27 10:50:17,402 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-27 10:50:17,404 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-27 10:50:17,404 - matplotlib.category - INFO - Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-01-27 10:50:18,840 - __main__ - INFO - Sistema inicializado com sucesso!
+2026-01-27 10:50:18,840 - __main__ - INFO - Entrando no loop de eventos da aplicação
+2026-01-27 10:51:07,496 - src.views.pages.questao_preview_page - INFO - QuestaoPreview inicializado (ID: Q-2022-0001)
+2026-01-27 10:51:11,580 - src.views.pages.questao_preview_page - INFO - QuestaoPreview inicializado (ID: Q-2022-0001)
+2026-01-27 10:51:17,213 - src.views.pages.questao_preview_page - INFO - QuestaoPreview inicializado (ID: Q-2022-0001)
+2026-01-27 10:51:22,999 - src.views.pages.questao_preview_page - INFO - QuestaoPreview inicializado (ID: Q-2022-0002)
+2026-01-27 10:51:30,340 - __main__ - INFO - Aplicação finalizada

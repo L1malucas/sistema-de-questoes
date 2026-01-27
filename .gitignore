@@ -86,3 +86,6 @@ desktop.ini
 
 # Claude Code
 .claude/
+
+# Arquivo de ambiente
+.env

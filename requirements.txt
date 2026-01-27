@@ -30,3 +30,10 @@ colorlog==6.8.0
 
 # UtilitÃ¡rios
 pathlib==1.0.1
+
+# MongoDB para logging remoto
+pymongo>=4.6.0
+dnspython>=2.4.0
+
+# Variáveis de ambiente
+python-dotenv>=1.0.0
