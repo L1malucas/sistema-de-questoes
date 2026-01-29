@@ -313,6 +313,7 @@ class QuestaoRepository(BaseRepository[Questao]):
                 fonte = FonteQuestao(
                     sigla=sigla_fonte.upper(),
                     nome_completo=sigla_fonte.upper(),
+                    tipo_instituicao='VESTIBULAR',
                     ativo=True
                 )
                 self.session.add(fonte)

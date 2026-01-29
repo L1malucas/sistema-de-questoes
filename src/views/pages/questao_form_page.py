@@ -14,7 +14,6 @@ from PyQt6.QtCore import Qt, pyqtSignal
 import logging
 
 from src.views.components.forms.latex_editor import LatexEditor
-from src.views.components.forms.difficulty_selector import DifficultySelector
 from src.views.pages.questao_preview_page import QuestaoPreview
 from src.views.components.dialogs.image_insert_dialog import ImageInsertDialog
 from src.controllers.adapters import criar_questao_controller
@@ -74,18 +73,25 @@ class QuestaoFormPage(QDialog):
         # Informacoes Basicas
         info_group = QGroupBox("Informacoes Basicas")
         info_layout = QVBoxLayout(info_group)
+
+        # Primeira linha: Titulo
         titulo_layout = QHBoxLayout()
         titulo_layout.addWidget(QLabel("Titulo (opcional):"))
         self.titulo_input = QLineEdit()
         self.titulo_input.setPlaceholderText("Ex: Funcao Quadratica - Vertice da Parabola")
         titulo_layout.addWidget(self.titulo_input)
         info_layout.addLayout(titulo_layout)
+
+        # Segunda linha: Ano, Tipo, Dificuldade
         meta_layout = QHBoxLayout()
         meta_layout.addWidget(QLabel("Ano:"))
         self.ano_spin = QSpinBox()
         self.ano_spin.setRange(1900, 2100)
         self.ano_spin.setValue(2026)
+        self.ano_spin.setFixedWidth(80)
         meta_layout.addWidget(self.ano_spin)
+
+        meta_layout.addSpacing(20)
         meta_layout.addWidget(QLabel("Tipo:"))
         self.tipo_objetiva = QRadioButton("Objetiva")
         self.tipo_discursiva = QRadioButton("Discursiva")
@@ -95,25 +101,42 @@ class QuestaoFormPage(QDialog):
         self.tipo_group.addButton(self.tipo_discursiva, 2)
         meta_layout.addWidget(self.tipo_objetiva)
         meta_layout.addWidget(self.tipo_discursiva)
+
+        meta_layout.addSpacing(20)
+        meta_layout.addWidget(QLabel("Dificuldade:"))
+        self.dificuldade_facil = QRadioButton("Facil")
+        self.dificuldade_facil.setStyleSheet("QRadioButton { color: #4caf50; font-weight: bold; }")
+        self.dificuldade_medio = QRadioButton("Medio")
+        self.dificuldade_medio.setStyleSheet("QRadioButton { color: #ff9800; font-weight: bold; }")
+        self.dificuldade_dificil = QRadioButton("Dificil")
+        self.dificuldade_dificil.setStyleSheet("QRadioButton { color: #f44336; font-weight: bold; }")
+        self.dificuldade_group = QButtonGroup()
+        self.dificuldade_group.addButton(self.dificuldade_facil, 1)
+        self.dificuldade_group.addButton(self.dificuldade_medio, 2)
+        self.dificuldade_group.addButton(self.dificuldade_dificil, 3)
+        meta_layout.addWidget(self.dificuldade_facil)
+        meta_layout.addWidget(self.dificuldade_medio)
+        meta_layout.addWidget(self.dificuldade_dificil)
         meta_layout.addStretch()
         info_layout.addLayout(meta_layout)
 
-        # Segunda linha: Fonte, Serie, Dificuldade
+        # Terceira linha: Fonte, Serie
         meta_layout2 = QHBoxLayout()
         meta_layout2.addWidget(QLabel("Fonte/Banca:"))
         self.fonte_input = QLineEdit()
         self.fonte_input.setPlaceholderText("Ex: ENEM, FUVEST, UNICAMP...")
         self.fonte_input.setToolTip("Digite a fonte/banca. Se nao existir, sera criada automaticamente.")
+        self.fonte_input.setMaximumWidth(250)
         meta_layout2.addWidget(self.fonte_input)
+
+        meta_layout2.addSpacing(20)
         meta_layout2.addWidget(QLabel("Serie/Nivel:"))
         self.serie_combo = QComboBox()
         self.serie_combo.addItem("Selecione...", None)
+        self.serie_combo.setMinimumWidth(150)
         meta_layout2.addWidget(self.serie_combo)
         meta_layout2.addStretch()
         info_layout.addLayout(meta_layout2)
-
-        self.difficulty_selector = DifficultySelector()
-        info_layout.addWidget(self.difficulty_selector)
         scroll_layout.addWidget(info_group)
 
         # Enunciado
@@ -326,8 +349,12 @@ class QuestaoFormPage(QDialog):
             dificuldade = getattr(dto, 'dificuldade', None)
             dificuldade_map = {'FACIL': 1, 'MEDIO': 2, 'DIFICIL': 3}
             id_dificuldade = dificuldade_map.get(dificuldade, 0)
-            if id_dificuldade:
-                self.difficulty_selector.set_difficulty(id_dificuldade)
+            if id_dificuldade == 1:
+                self.dificuldade_facil.setChecked(True)
+            elif id_dificuldade == 2:
+                self.dificuldade_medio.setChecked(True)
+            elif id_dificuldade == 3:
+                self.dificuldade_dificil.setChecked(True)
 
             self.enunciado_editor.set_text(getattr(dto, 'enunciado', '') or '')
             self.resolucao_editor.set_text(getattr(dto, 'resolucao', '') or "")
@@ -418,7 +445,7 @@ class QuestaoFormPage(QDialog):
             'tipo': 'OBJETIVA' if self.tipo_objetiva.isChecked() else 'DISCURSIVA',
             'ano': self.ano_spin.value(),
             'fonte': None,
-            'id_dificuldade': self.difficulty_selector.get_selected_difficulty(),
+            'id_dificuldade': self.dificuldade_group.checkedId(),
             'resolucao': self.resolucao_editor.get_text() or None,
             'gabarito_discursiva': self.gabarito_editor.get_text() or None,
             'observacoes': self.observacoes_edit.toPlainText().strip() or None,
@@ -563,7 +590,7 @@ class QuestaoFormPage(QDialog):
 
             fonte_nome = self.fonte_input.text().strip() or None
 
-            dificuldade_id = self.difficulty_selector.get_selected_difficulty()
+            dificuldade_id = self.dificuldade_group.checkedId()
             dificuldade_map = {1: 'Facil', 2: 'Medio', 3: 'Dificil'}
             dificuldade_nome = dificuldade_map.get(dificuldade_id, 'N/A')
 

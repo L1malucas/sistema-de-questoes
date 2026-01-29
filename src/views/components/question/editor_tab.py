@@ -58,13 +58,33 @@ class EditorTab(QWidget):
         metadata_layout.addLayout(type_toggle_layout)
         self.question_type_group.buttonClicked.connect(self._on_question_type_toggled)
 
-        # Academic Year & Origin/Source
+        # Academic Year, Origin/Source & Difficulty (same line)
         info_layout = QHBoxLayout()
-        self.academic_year_input = TextInput(placeholder_text="Ano Acadêmico", parent=metadata_frame)
-        self.academic_year_input.setValidator(self.get_year_validator()) # Requires QIntValidator
+        self.academic_year_input = TextInput(placeholder_text="Ano", parent=metadata_frame)
+        self.academic_year_input.setValidator(self.get_year_validator())
+        self.academic_year_input.setMaximumWidth(80)
         info_layout.addWidget(self.academic_year_input)
+
         self.origin_input = TextInput(placeholder_text="Origem/Fonte", parent=metadata_frame)
+        self.origin_input.setMaximumWidth(180)
         info_layout.addWidget(self.origin_input)
+
+        info_layout.addSpacing(20)
+        info_layout.addWidget(QLabel("Dificuldade:", metadata_frame))
+        self.difficulty_group = QButtonGroup(self)
+        self.difficulty_easy = QRadioButton("Fácil", metadata_frame)
+        self.difficulty_easy.setStyleSheet("QRadioButton { color: #4caf50; font-weight: bold; }")
+        self.difficulty_medium = QRadioButton("Médio", metadata_frame)
+        self.difficulty_medium.setStyleSheet("QRadioButton { color: #ff9800; font-weight: bold; }")
+        self.difficulty_hard = QRadioButton("Difícil", metadata_frame)
+        self.difficulty_hard.setStyleSheet("QRadioButton { color: #f44336; font-weight: bold; }")
+        self.difficulty_group.addButton(self.difficulty_easy, 1)
+        self.difficulty_group.addButton(self.difficulty_medium, 2)
+        self.difficulty_group.addButton(self.difficulty_hard, 3)
+        info_layout.addWidget(self.difficulty_easy)
+        info_layout.addWidget(self.difficulty_medium)
+        info_layout.addWidget(self.difficulty_hard)
+        info_layout.addStretch()
         metadata_layout.addLayout(info_layout)
         self.scroll_layout.addWidget(metadata_frame)
 
@@ -256,6 +276,7 @@ class EditorTab(QWidget):
         self.origin_input.textChanged.connect(self.content_changed.emit)
         self.statement_input.textChanged.connect(self.content_changed.emit)
         self.answer_key_input.textChanged.connect(self.content_changed.emit)
+        self.difficulty_group.buttonClicked.connect(lambda: self.content_changed.emit())
         for alt_widget in self.alternatives_widgets:
             alt_widget.text_input.textChanged.connect(self.content_changed.emit)
             alt_widget.radio_button.toggled.connect(self.content_changed.emit)

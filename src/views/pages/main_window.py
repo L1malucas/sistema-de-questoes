@@ -174,11 +174,17 @@ class MainWindow(QMainWindow):
             fonte_raw = question_data.get('origin', '').strip()
             fonte = fonte_raw.upper() if fonte_raw else None
 
+            # Converter dificuldade (1=FACIL, 2=MEDIO, 3=DIFICIL)
+            id_dificuldade = question_data.get('difficulty')
+            if id_dificuldade and id_dificuldade < 1:
+                id_dificuldade = None
+
             dto = QuestaoCreateDTO(
                 enunciado=question_data.get('statement', ''),
                 tipo=tipo,
                 ano=int(question_data.get('academic_year', 2026)) if question_data.get('academic_year') else 2026,
                 fonte=fonte,
+                id_dificuldade=id_dificuldade,
                 alternativas=alternativas_dto,
                 tags=question_data.get('tags', []),
                 observacoes=None

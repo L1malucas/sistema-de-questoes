@@ -182,6 +182,7 @@ class QuestionEditorPage(QWidget):
         self.question_data['origin'] = self.editor_tab.origin_input.text()
         self.question_data['statement'] = self.editor_tab.statement_input.toPlainText()
         self.question_data['question_type'] = self.editor_tab.current_question_type
+        self.question_data['difficulty'] = self.editor_tab.difficulty_group.checkedId()
 
         if self.question_data['question_type'] == "objective":
             self.question_data['alternatives'] = []
@@ -200,10 +201,15 @@ class QuestionEditorPage(QWidget):
 
     def _update_preview(self):
         # Simple HTML generation for preview (will be more sophisticated with LaTeX rendering)
+        difficulty_map = {1: 'Fácil', 2: 'Médio', 3: 'Difícil'}
+        difficulty_id = self.question_data.get('difficulty', -1)
+        difficulty_name = difficulty_map.get(difficulty_id, 'Não selecionada')
+
         question_html = f"<h2>Pré-visualização da Questão</h2>"
         question_html += f"<p><b>Ano:</b> {self.question_data.get('academic_year', '')}</p>"
         question_html += f"<p><b>Origem:</b> {self.question_data.get('origin', '')}</p>"
         question_html += f"<p><b>Tipo:</b> {self.question_data.get('question_type', '')}</p>"
+        question_html += f"<p><b>Dificuldade:</b> {difficulty_name}</p>"
         question_html += f"<h3>Enunciado:</h3><p>{self.question_data.get('statement', '')}</p>"
 
         resolution_html = None
