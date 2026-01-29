@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QWidget, QFrame, QSizePolicy
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QFont
 import logging
 import re
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 class QuestaoPreview(QDialog):
     """Janela de preview da questão no formato PDF"""
+    edit_requested = pyqtSignal(object)  # Emite questao_data quando editar é clicado
 
     def __init__(self, questao_data, parent=None):
         super().__init__(parent)
@@ -219,6 +220,23 @@ class QuestaoPreview(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
+        btn_edit = QPushButton("Editar Questão")
+        btn_edit.setStyleSheet("""
+            QPushButton {
+                padding: 8px 25px;
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+        """)
+        btn_edit.clicked.connect(self._on_edit_clicked)
+        btn_layout.addWidget(btn_edit)
+
         btn_close = QPushButton("Fechar")
         btn_close.setStyleSheet("""
             QPushButton {
@@ -237,6 +255,11 @@ class QuestaoPreview(QDialog):
         btn_layout.addWidget(btn_close)
 
         layout.addLayout(btn_layout)
+
+    def _on_edit_clicked(self):
+        """Handler para botão de editar."""
+        self.edit_requested.emit(self.questao_data)
+        self.accept()
 
     def _processar_texto_com_imagens(self, texto: str) -> list:
         """

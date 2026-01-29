@@ -220,10 +220,13 @@ class QuestaoRepository(BaseRepository[Questao]):
                 TipoQuestao.codigo == filtros['tipo']
             )
 
-        # Filtro por tags (AND - questão deve ter todas as tags)
+        # Filtro por tags (OR - questão deve ter pelo menos uma das tags)
         if filtros.get('tags'):
-            for tag_uuid in filtros['tags']:
-                query = query.join(Questao.tags).filter(Tag.uuid == tag_uuid)
+            tag_uuids = filtros['tags']
+            if len(tag_uuids) == 1:
+                query = query.join(Questao.tags).filter(Tag.uuid == tag_uuids[0])
+            else:
+                query = query.join(Questao.tags).filter(Tag.uuid.in_(tag_uuids))
 
         # Filtro por título ou enunciado
         if filtros.get('titulo'):

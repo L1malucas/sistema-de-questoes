@@ -288,6 +288,10 @@ class TagControllerAdapter:
             return tags[tag_id - 1]
         return None
 
+    def buscar_tag_por_uuid(self, uuid):
+        """Busca tag por UUID"""
+        return TagControllerORM.buscar_por_uuid(uuid)
+
     def criar_tag(self, dto, tipo: str = 'CONTEUDO', uuid_disciplina: str = None):
         """
         Cria uma nova tag a partir de DTO

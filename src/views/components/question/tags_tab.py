@@ -419,12 +419,59 @@ class TagsTab(QWidget):
     def set_selected_tags(self, tag_uuids: list):
         """Define as tags selecionadas por lista de UUIDs."""
         self.selected_tag_uuids = tag_uuids.copy()
-        # Atualizar selecao na lista
+
+        # Buscar informações das tags para exibir badges
+        self._load_tags_info_and_display(tag_uuids)
+
+        # Atualizar selecao na lista (se a disciplina correta estiver selecionada)
         for i in range(self.tags_list.count()):
             item = self.tags_list.item(i)
             uuid = item.data(Qt.ItemDataRole.UserRole)
             item.setSelected(uuid in tag_uuids)
-        self._update_selected_badges()
+
+    def _load_tags_info_and_display(self, tag_uuids: list):
+        """Busca informações das tags e exibe os badges."""
+        if not tag_uuids:
+            return
+
+        # Limpar badges existentes
+        while self.selected_tags_flow_layout.count():
+            item = self.selected_tags_flow_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Buscar informações de cada tag
+        tags_info = []
+        uuid_disciplina = None
+        for tag_uuid in tag_uuids:
+            try:
+                tag_info = self.tag_controller.buscar_tag_por_uuid(tag_uuid)
+                if tag_info:
+                    tags_info.append({
+                        'uuid': tag_uuid,
+                        'nome': tag_info.get('nome', 'Tag'),
+                        'uuid_disciplina': tag_info.get('uuid_disciplina')
+                    })
+                    # Guardar a disciplina da primeira tag para selecionar no dropdown
+                    if not uuid_disciplina and tag_info.get('uuid_disciplina'):
+                        uuid_disciplina = tag_info.get('uuid_disciplina')
+            except Exception as e:
+                print(f"Erro ao buscar tag {tag_uuid}: {e}")
+
+        # Selecionar a disciplina no dropdown (se encontrada)
+        if uuid_disciplina:
+            idx = self.disciplina_combo.findData(uuid_disciplina)
+            if idx >= 0:
+                self.disciplina_combo.setCurrentIndex(idx)
+
+        # Criar badges para as tags
+        bg_colors = ['#dbeafe', '#dcfce7', '#f3e8ff', '#ffedd5', '#fee2e2', '#fef9c3']
+        for i, tag_info in enumerate(tags_info):
+            bg_color = bg_colors[i % len(bg_colors)]
+            badge = RemovableBadge(tag_info['nome'], color=bg_color, text_color="#000000", parent=self)
+            badge.tag_uuid = tag_info['uuid']
+            badge.removed.connect(self._on_removable_badge_removed)
+            self.selected_tags_flow_layout.addWidget(badge)
 
     def clear_selection(self):
         """Limpa todas as selecoes."""

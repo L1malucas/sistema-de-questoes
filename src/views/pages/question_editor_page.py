@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTabWidget, QStackedWidget, QSpacerItem, QSizePolicy, QFrame,
-    QCompleter, QMessageBox
+    QCompleter, QMessageBox, QInputDialog
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon
@@ -28,6 +28,8 @@ class QuestionEditorPage(QWidget):
         self.setObjectName("question_editor_page")
 
         self.question_data = {} # Dictionary to hold all question data
+        self.editing_question_id = None  # ID da questão em edição (None = criação)
+        self.is_editing = False  # Modo de edição
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -53,10 +55,10 @@ class QuestionEditorPage(QWidget):
         self.back_button.clicked.connect(self.back_to_questions_requested.emit)
         top_bar_layout.addWidget(self.back_button)
 
-        title_label = QLabel(f"MathBank / Criar Questão", top_bar_frame)
-        title_label.setObjectName("editor_title")
-        title_label.setStyleSheet(f"font-size: {Typography.FONT_SIZE_XL}; font-weight: {Typography.FONT_WEIGHT_BOLD}; color: {Color.DARK_TEXT};")
-        top_bar_layout.addWidget(title_label)
+        self.title_label = QLabel(f"MathBank / Criar Questão", top_bar_frame)
+        self.title_label.setObjectName("editor_title")
+        self.title_label.setStyleSheet(f"font-size: {Typography.FONT_SIZE_XL}; font-weight: {Typography.FONT_WEIGHT_BOLD}; color: {Color.DARK_TEXT};")
+        top_bar_layout.addWidget(self.title_label)
         top_bar_layout.addStretch()
 
         # View Options (Editor View / Dual Pane) - Placeholder
@@ -289,6 +291,49 @@ class QuestionEditorPage(QWidget):
             QMessageBox.warning(self, "Validacao", erro)
             return
 
+        # Gerar titulo automaticamente: FONTE - TAG PRINCIPAL - ANO
+        tags_with_names = self.tags_tab.get_selected_content_tags_with_names()
+        tag_principal_nome = None
+
+        if len(tags_with_names) > 1:
+            # Perguntar qual tag e a principal
+            nomes = [nome for _, nome in tags_with_names]
+            escolhido, ok = QInputDialog.getItem(
+                self,
+                "Tag Principal",
+                "A questao possui multiplas tags.\nSelecione a tag principal para o titulo:",
+                nomes,
+                0,
+                False
+            )
+            if not ok:
+                return
+            tag_principal_nome = escolhido
+
+            # Reordenar tags para colocar a principal primeiro
+            idx_principal = nomes.index(escolhido)
+            uuid_principal = tags_with_names[idx_principal][0]
+            tags = self.question_data.get('tags', [])
+            if uuid_principal in tags:
+                tags.remove(uuid_principal)
+                tags.insert(0, uuid_principal)
+                self.question_data['tags'] = tags
+        elif len(tags_with_names) == 1:
+            tag_principal_nome = tags_with_names[0][1]
+
+        # Montar titulo: FONTE - TAG - ANO
+        fonte = self.editor_tab.origin_input.text().strip().upper()
+        ano = self.editor_tab.academic_year_input.text().strip()
+        titulo_partes = []
+        if fonte:
+            titulo_partes.append(fonte)
+        if tag_principal_nome:
+            titulo_partes.append(tag_principal_nome)
+        if ano:
+            titulo_partes.append(ano)
+
+        self.question_data['titulo'] = ' - '.join(titulo_partes) if titulo_partes else None
+
         self.save_requested.emit(self.question_data)
         self.status_label.setText("Questão salva com sucesso!")
 
@@ -336,6 +381,111 @@ class QuestionEditorPage(QWidget):
                 cursor_pos = line_edit.cursorPosition()
                 novo_texto = texto_atual[:cursor_pos] + placeholder + texto_atual[cursor_pos:]
                 line_edit.setText(novo_texto)
+
+    def load_question_for_editing(self, questao_data: dict):
+        """Carrega dados de uma questão para edição."""
+        self.is_editing = True
+        self.editing_question_id = questao_data.get('codigo') or questao_data.get('id')
+        self.title_label.setText(f"MathBank / Editar Questão #{self.editing_question_id}")
+
+        # Preencher campos do editor
+        self.editor_tab.academic_year_input.setText(str(questao_data.get('ano', '')))
+        self.editor_tab.origin_input.setText(questao_data.get('fonte', '') or '')
+        self.editor_tab.statement_input.setPlainText(questao_data.get('enunciado', '') or '')
+
+        # Tipo de questão
+        tipo = questao_data.get('tipo', 'OBJETIVA')
+        if tipo == 'OBJETIVA':
+            self.editor_tab.objective_radio.setChecked(True)
+            self.editor_tab.current_question_type = "objective"
+        else:
+            self.editor_tab.discursive_radio.setChecked(True)
+            self.editor_tab.current_question_type = "discursive"
+        self.editor_tab._update_visibility_by_question_type()
+
+        # Dificuldade
+        dificuldade = questao_data.get('dificuldade', '')
+        if dificuldade:
+            dif_map = {'FACIL': 1, 'MEDIO': 2, 'DIFICIL': 3}
+            dif_id = dif_map.get(dificuldade.upper(), 0)
+            if dif_id == 1:
+                self.editor_tab.difficulty_easy.setChecked(True)
+            elif dif_id == 2:
+                self.editor_tab.difficulty_medium.setChecked(True)
+            elif dif_id == 3:
+                self.editor_tab.difficulty_hard.setChecked(True)
+
+        # Alternativas (se objetiva)
+        if tipo == 'OBJETIVA':
+            alternativas = questao_data.get('alternativas', [])
+            for i, alt in enumerate(alternativas):
+                if i < len(self.editor_tab.alternatives_widgets):
+                    widget = self.editor_tab.alternatives_widgets[i]
+                    texto = alt.get('texto', '') if isinstance(alt, dict) else ''
+                    correta = alt.get('correta', False) if isinstance(alt, dict) else False
+                    widget.text_input.setText(texto)
+                    if correta:
+                        widget.radio_button.setChecked(True)
+
+        # Resposta discursiva
+        resposta = questao_data.get('resposta', {})
+        if resposta and resposta.get('gabarito_discursivo'):
+            self.editor_tab.answer_key_input.setPlainText(resposta.get('gabarito_discursivo', ''))
+
+        # Tags - extrair UUIDs das tags
+        tags = questao_data.get('tags', [])
+        tag_uuids = []
+        for tag in tags:
+            if isinstance(tag, dict):
+                uuid = tag.get('uuid')
+                if uuid:
+                    tag_uuids.append(uuid)
+            elif isinstance(tag, str):
+                tag_uuids.append(tag)
+
+        if tag_uuids:
+            self.tags_tab.set_selected_tags(tag_uuids)
+            self.question_data['tags'] = tag_uuids
+
+        # Atualizar dados internos
+        self._update_question_data()
+        self._update_save_button_state()
+
+    def clear_form(self):
+        """Limpa o formulário para criação de nova questão."""
+        self.is_editing = False
+        self.editing_question_id = None
+        self.title_label.setText("MathBank / Criar Questão")
+        self.question_data = {}
+
+        # Limpar campos do editor
+        self.editor_tab.academic_year_input.clear()
+        self.editor_tab.origin_input.clear()
+        self.editor_tab.statement_input.clear()
+        self.editor_tab.answer_key_input.clear()
+
+        # Resetar tipo para objetiva
+        self.editor_tab.objective_radio.setChecked(True)
+        self.editor_tab.current_question_type = "objective"
+        self.editor_tab._update_visibility_by_question_type()
+
+        # Limpar dificuldade
+        self.editor_tab.difficulty_group.setExclusive(False)
+        self.editor_tab.difficulty_easy.setChecked(False)
+        self.editor_tab.difficulty_medium.setChecked(False)
+        self.editor_tab.difficulty_hard.setChecked(False)
+        self.editor_tab.difficulty_group.setExclusive(True)
+
+        # Limpar alternativas
+        for widget in self.editor_tab.alternatives_widgets:
+            widget.text_input.clear()
+            widget.radio_button.setChecked(False)
+
+        # Limpar tags
+        self.tags_tab.clear_selection()
+
+        # Atualizar estado do botão salvar
+        self._update_save_button_state()
 
 
 if __name__ == '__main__':

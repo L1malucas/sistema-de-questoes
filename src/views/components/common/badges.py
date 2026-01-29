@@ -52,8 +52,18 @@ class DifficultyBadge(BaseBadge):
     """
     Badge displaying difficulty level with specific colors.
     """
+    # Mapeamento de dificuldade para português
+    DIFFICULTY_LABELS = {
+        DifficultyEnum.EASY: "FÁCIL",
+        DifficultyEnum.MEDIUM: "MÉDIO",
+        DifficultyEnum.HARD: "DIFÍCIL",
+        DifficultyEnum.VERY_HARD: "MUITO DIFÍCIL",
+    }
+
     def __init__(self, difficulty: DifficultyEnum, parent=None):
-        super().__init__(difficulty.value.upper(), parent, object_name="difficulty_badge")
+        # Usar label em português
+        label = self.DIFFICULTY_LABELS.get(difficulty, difficulty.value.upper())
+        super().__init__(label, parent, object_name="difficulty_badge")
         color = Color.TAG_GRAY
         text_color = Color.WHITE
         if difficulty == DifficultyEnum.EASY:

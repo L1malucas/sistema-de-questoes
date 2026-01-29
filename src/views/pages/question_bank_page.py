@@ -1,10 +1,10 @@
 # src/views/pages/question_bank_page.py
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGridLayout,
-    QScrollArea, QSizePolicy, QSpacerItem, QFrame, QPushButton
+    QScrollArea, QSizePolicy, QSpacerItem, QFrame, QPushButton, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QAction
 from typing import Dict, List, Any, Optional
 
 from src.views.design.constants import Color, Spacing, Typography, Dimensions, Text, IconPath
@@ -71,6 +71,7 @@ class QuestionBankPage(QWidget):
     filter_changed = pyqtSignal(dict)
     page_changed = pyqtSignal(int)
     question_selected = pyqtSignal(str)
+    edit_question_requested = pyqtSignal(object)  # Emite questao_data para edição
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -83,6 +84,8 @@ class QuestionBankPage(QWidget):
         self.total_results = 0
         self.questions_data: List[Dict] = []
         self.selected_tag_path: str = ""
+        self.selected_discipline_uuid: str = None  # UUID da disciplina selecionada
+        self.selected_discipline_name: str = None  # Nome da disciplina selecionada
 
         self._setup_ui()
         self._load_data()
@@ -139,38 +142,65 @@ class QuestionBankPage(QWidget):
                 padding: {Spacing.SM}px;
             }}
         """)
-        filter_layout = QHBoxLayout(filter_bar_frame)
-        filter_layout.setContentsMargins(Spacing.SM, Spacing.SM, Spacing.SM, Spacing.SM)
-        filter_layout.setSpacing(Spacing.SM)
+        filter_bar_layout = QVBoxLayout(filter_bar_frame)
+        filter_bar_layout.setContentsMargins(Spacing.SM, Spacing.SM, Spacing.SM, Spacing.SM)
+        filter_bar_layout.setSpacing(Spacing.SM)
+
+        # Primeira linha: Busca e botões de filtro
+        filter_buttons_layout = QHBoxLayout()
+        filter_buttons_layout.setSpacing(Spacing.SM)
 
         # Search Input
         self.search_input = SearchInput(placeholder_text=Text.SEARCH_PLACEHOLDER, parent=self)
-        self.search_input.setMinimumWidth(300)
+        self.search_input.setMinimumWidth(250)
         self.search_input.textChanged.connect(self._on_search_changed)
-        filter_layout.addWidget(self.search_input)
-
-        # Filter Chips Container
-        self.chips_container = QHBoxLayout()
-        self.chips_container.setSpacing(Spacing.XS)
-        filter_layout.addLayout(self.chips_container)
+        filter_buttons_layout.addWidget(self.search_input)
 
         # Filter Dropdowns
-        self.source_filter_btn = SecondaryButton("ENEM ▼", parent=self)
+        self.source_filter_btn = SecondaryButton("Fonte ▼", parent=self)
         self.source_filter_btn.clicked.connect(self._show_source_menu)
-        filter_layout.addWidget(self.source_filter_btn)
+        filter_buttons_layout.addWidget(self.source_filter_btn)
 
         self.difficulty_filter_btn = SecondaryButton(f"{Text.FILTER_DIFFICULTY} ▼", parent=self)
         self.difficulty_filter_btn.clicked.connect(self._show_difficulty_menu)
-        filter_layout.addWidget(self.difficulty_filter_btn)
+        filter_buttons_layout.addWidget(self.difficulty_filter_btn)
 
         self.type_filter_btn = SecondaryButton(f"{Text.FILTER_TYPE} ▼", parent=self)
         self.type_filter_btn.clicked.connect(self._show_type_menu)
-        filter_layout.addWidget(self.type_filter_btn)
+        filter_buttons_layout.addWidget(self.type_filter_btn)
 
-        filter_layout.addStretch()
+        self.discipline_filter_btn = SecondaryButton("Disciplina ▼", parent=self)
+        self.discipline_filter_btn.clicked.connect(self._show_discipline_menu)
+        filter_buttons_layout.addWidget(self.discipline_filter_btn)
 
-        filters_btn = SecondaryButton(f"≡ {Text.QUESTION_BANK_FILTERS}", parent=self)
-        filter_layout.addWidget(filters_btn)
+        self.tag_filter_btn = SecondaryButton("Conteúdo ▼", parent=self)
+        self.tag_filter_btn.clicked.connect(self._show_tag_menu)
+        self.tag_filter_btn.setEnabled(False)  # Desabilitado até selecionar disciplina
+        filter_buttons_layout.addWidget(self.tag_filter_btn)
+
+        filter_buttons_layout.addStretch()
+
+        self.clear_filters_btn = SecondaryButton("Limpar Filtros", parent=self)
+        self.clear_filters_btn.clicked.connect(self._clear_all_filters)
+        filter_buttons_layout.addWidget(self.clear_filters_btn)
+
+        filter_bar_layout.addLayout(filter_buttons_layout)
+
+        # Segunda linha: Chips de filtros aplicados
+        self.chips_frame = QFrame(self)
+        self.chips_frame.setObjectName("chips_frame")
+        self.chips_frame.setStyleSheet(f"""
+            QFrame#chips_frame {{
+                background-color: transparent;
+            }}
+        """)
+        self.chips_container = QHBoxLayout(self.chips_frame)
+        self.chips_container.setContentsMargins(0, 0, 0, 0)
+        self.chips_container.setSpacing(Spacing.XS)
+        self.chips_container.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.chips_container.addStretch()
+        self.chips_frame.hide()  # Esconder quando não há filtros
+        filter_bar_layout.addWidget(self.chips_frame)
 
         main_layout.addWidget(filter_bar_frame)
 
@@ -373,15 +403,11 @@ class QuestionBankPage(QWidget):
         # Extract data from database response
         codigo = q_data.get('codigo', 'N/A')
         titulo = q_data.get('titulo')
-        enunciado = q_data.get('enunciado', '')
-        
-        # Use título if available, otherwise use first part of enunciado
+
+        # Usar apenas o título - não mostrar enunciado no card
         if not titulo or not titulo.strip():
-            # Generate title from enunciado (first 60 chars)
-            titulo = enunciado[:60].strip() + ('...' if len(enunciado) > 60 else '')
-            if not titulo:
-                titulo = "Sem título"
-        
+            titulo = "Sem título"
+
         # Get tags (list of tag names)
         tags = q_data.get('tags', [])
         if isinstance(tags, list):
@@ -389,7 +415,7 @@ class QuestionBankPage(QWidget):
             tags = [str(tag) for tag in tags if tag]
         else:
             tags = []
-        
+
         # Map difficulty string to enum
         dificuldade_str = q_data.get('dificuldade', 'MEDIO')
         difficulty_map = {
@@ -400,26 +426,10 @@ class QuestionBankPage(QWidget):
         }
         difficulty = difficulty_map.get(dificuldade_str.upper() if dificuldade_str else 'MEDIO', DifficultyEnum.MEDIUM)
 
-        # Extract LaTeX formula from enunciado if present
-        formula = None
-        if enunciado:
-            # Look for block math ($$...$$)
-            if '$$' in enunciado:
-                start = enunciado.find('$$')
-                end = enunciado.find('$$', start + 2)
-                if end > start:
-                    formula = enunciado[start:end+2]
-            # Look for inline math ($...$)
-            elif '$' in enunciado:
-                start = enunciado.find('$')
-                end = enunciado.find('$', start + 1)
-                if end > start:
-                    formula = enunciado[start:end+1]
-
         return QuestionCard(
             question_id=f"#{codigo}",
             title=titulo,
-            formula=formula,
+            formula=None,  # Não mostrar fórmulas no card para padronizar
             tags=tags[:3] if tags else [],  # Limit to 3 tags for display
             difficulty=difficulty,
             parent=self
@@ -484,8 +494,9 @@ class QuestionBankPage(QWidget):
             # Open preview dialog
             from src.views.pages.questao_preview_page import QuestaoPreview
             preview_dialog = QuestaoPreview(preview_data, parent=self)
+            preview_dialog.edit_requested.connect(self._on_edit_question_requested)
             preview_dialog.exec()
-            
+
             # Emit signal for other components
             self.question_selected.emit(uuid)
             
@@ -555,29 +566,482 @@ class QuestionBankPage(QWidget):
 
     def _show_source_menu(self):
         """Show source filter menu."""
-        # TODO: Implement dropdown menu with sources from database
-        pass
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_LIGHT};
+                border-radius: {Dimensions.BORDER_RADIUS_MD};
+                padding: {Spacing.XS}px;
+            }}
+            QMenu::item {{
+                padding: {Spacing.SM}px {Spacing.MD}px;
+                border-radius: {Dimensions.BORDER_RADIUS_SM};
+            }}
+            QMenu::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_1};
+                color: {Color.PRIMARY_BLUE};
+            }}
+        """)
+
+        # Opção para limpar filtro
+        action_all = QAction("Todas as Fontes", self)
+        action_all.triggered.connect(lambda: self._apply_source_filter(None))
+        menu.addAction(action_all)
+        menu.addSeparator()
+
+        # Buscar fontes do banco de dados
+        try:
+            from src.controllers.adapters import listar_fontes_questao
+            fontes = listar_fontes_questao()
+            for fonte in fontes:
+                sigla = fonte.get('sigla', '')
+                action = QAction(sigla, self)
+                action.triggered.connect(lambda checked, s=sigla: self._apply_source_filter(s))
+                menu.addAction(action)
+        except Exception as e:
+            print(f"Erro ao carregar fontes: {e}")
+
+        menu.exec(self.source_filter_btn.mapToGlobal(self.source_filter_btn.rect().bottomLeft()))
 
     def _show_difficulty_menu(self):
         """Show difficulty filter menu."""
-        # TODO: Implement dropdown menu
-        pass
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_LIGHT};
+                border-radius: {Dimensions.BORDER_RADIUS_MD};
+                padding: {Spacing.XS}px;
+            }}
+            QMenu::item {{
+                padding: {Spacing.SM}px {Spacing.MD}px;
+                border-radius: {Dimensions.BORDER_RADIUS_SM};
+            }}
+            QMenu::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_1};
+                color: {Color.PRIMARY_BLUE};
+            }}
+        """)
+
+        # Opção para limpar filtro
+        action_all = QAction("Todas as Dificuldades", self)
+        action_all.triggered.connect(lambda: self._apply_difficulty_filter(None))
+        menu.addAction(action_all)
+        menu.addSeparator()
+
+        # Opções de dificuldade
+        difficulties = [
+            ("Fácil", "FACIL"),
+            ("Médio", "MEDIO"),
+            ("Difícil", "DIFICIL")
+        ]
+        for label, value in difficulties:
+            action = QAction(label, self)
+            action.triggered.connect(lambda checked, v=value, l=label: self._apply_difficulty_filter(v, l))
+            menu.addAction(action)
+
+        menu.exec(self.difficulty_filter_btn.mapToGlobal(self.difficulty_filter_btn.rect().bottomLeft()))
 
     def _show_type_menu(self):
         """Show type filter menu."""
-        # TODO: Implement dropdown menu
-        pass
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_LIGHT};
+                border-radius: {Dimensions.BORDER_RADIUS_MD};
+                padding: {Spacing.XS}px;
+            }}
+            QMenu::item {{
+                padding: {Spacing.SM}px {Spacing.MD}px;
+                border-radius: {Dimensions.BORDER_RADIUS_SM};
+            }}
+            QMenu::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_1};
+                color: {Color.PRIMARY_BLUE};
+            }}
+        """)
+
+        # Opção para limpar filtro
+        action_all = QAction("Todos os Tipos", self)
+        action_all.triggered.connect(lambda: self._apply_type_filter(None))
+        menu.addAction(action_all)
+        menu.addSeparator()
+
+        # Opções de tipo
+        types = [
+            ("Objetiva", "OBJETIVA"),
+            ("Discursiva", "DISCURSIVA")
+        ]
+        for label, value in types:
+            action = QAction(label, self)
+            action.triggered.connect(lambda checked, v=value, l=label: self._apply_type_filter(v, l))
+            menu.addAction(action)
+
+        menu.exec(self.type_filter_btn.mapToGlobal(self.type_filter_btn.rect().bottomLeft()))
+
+    def _apply_source_filter(self, source: Optional[str]):
+        """Apply source filter."""
+        if source:
+            self.current_filters['fonte'] = source
+            self.source_filter_btn.setText(f"{source} ▼")
+            self._add_filter_chip(f"Fonte: {source}", "fonte")
+        else:
+            self.current_filters.pop('fonte', None)
+            self.source_filter_btn.setText("Fonte ▼")
+            self._remove_chip_by_key("fonte")
+        self.current_page = 1
+        self._load_data(self.current_filters)
+
+    def _apply_difficulty_filter(self, difficulty: Optional[str], label: str = None):
+        """Apply difficulty filter."""
+        if difficulty:
+            self.current_filters['dificuldade'] = difficulty
+            self.difficulty_filter_btn.setText(f"{label} ▼")
+            self._add_filter_chip(f"Dificuldade: {label}", "dificuldade")
+        else:
+            self.current_filters.pop('dificuldade', None)
+            self.difficulty_filter_btn.setText(f"{Text.FILTER_DIFFICULTY} ▼")
+            self._remove_chip_by_key("dificuldade")
+        self.current_page = 1
+        self._load_data(self.current_filters)
+
+    def _apply_type_filter(self, type_value: Optional[str], label: str = None):
+        """Apply type filter."""
+        if type_value:
+            self.current_filters['tipo'] = type_value
+            self.type_filter_btn.setText(f"{label} ▼")
+            self._add_filter_chip(f"Tipo: {label}", "tipo")
+        else:
+            self.current_filters.pop('tipo', None)
+            self.type_filter_btn.setText(f"{Text.FILTER_TYPE} ▼")
+            self._remove_chip_by_key("tipo")
+        self.current_page = 1
+        self._load_data(self.current_filters)
+
+    def _show_discipline_menu(self):
+        """Show discipline filter menu."""
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_LIGHT};
+                border-radius: {Dimensions.BORDER_RADIUS_MD};
+                padding: {Spacing.XS}px;
+            }}
+            QMenu::item {{
+                padding: {Spacing.SM}px {Spacing.MD}px;
+                border-radius: {Dimensions.BORDER_RADIUS_SM};
+            }}
+            QMenu::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_1};
+                color: {Color.PRIMARY_BLUE};
+            }}
+        """)
+
+        # Opção para limpar filtro
+        action_all = QAction("Todas as Disciplinas", self)
+        action_all.triggered.connect(lambda: self._apply_discipline_filter(None, None))
+        menu.addAction(action_all)
+        menu.addSeparator()
+
+        # Buscar disciplinas do banco de dados
+        try:
+            from src.controllers.adapters import criar_tag_controller
+            tag_controller = criar_tag_controller()
+            disciplinas = tag_controller.listar_disciplinas()
+            for disc in disciplinas:
+                uuid = disc.get('uuid')
+                nome = disc.get('texto', disc.get('nome', ''))
+                action = QAction(nome, self)
+                action.triggered.connect(lambda checked, u=uuid, n=nome: self._apply_discipline_filter(u, n))
+                menu.addAction(action)
+        except Exception as e:
+            print(f"Erro ao carregar disciplinas: {e}")
+
+        menu.exec(self.discipline_filter_btn.mapToGlobal(self.discipline_filter_btn.rect().bottomLeft()))
+
+    def _show_tag_menu(self):
+        """Show tag/content filter menu with multi-select."""
+        if not self.selected_discipline_uuid:
+            return
+
+        from PyQt6.QtWidgets import QWidgetAction, QListWidget, QListWidgetItem, QAbstractItemView
+
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_LIGHT};
+                border-radius: {Dimensions.BORDER_RADIUS_MD};
+                padding: 0px;
+            }}
+        """)
+
+        # Container principal
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
+
+        # Header com label e botão limpar
+        header_widget = QWidget()
+        header_widget.setStyleSheet(f"""
+            QWidget {{
+                background-color: {Color.LIGHT_BACKGROUND};
+                border-bottom: 1px solid {Color.BORDER_LIGHT};
+            }}
+        """)
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(12, 8, 8, 8)
+
+        label = QLabel("Clique para selecionar:")
+        label.setStyleSheet(f"font-size: 12px; color: {Color.GRAY_TEXT};")
+        header_layout.addWidget(label)
+        header_layout.addStretch()
+
+        btn_clear = QPushButton("Limpar")
+        btn_clear.setStyleSheet(f"""
+            QPushButton {{
+                padding: 4px 12px;
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_LIGHT};
+                border-radius: 4px;
+                color: {Color.DARK_TEXT};
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: #fee2e2;
+                border-color: #f87171;
+            }}
+        """)
+        header_layout.addWidget(btn_clear)
+        container_layout.addWidget(header_widget)
+
+        # Criar widget de lista scrollável com multi-seleção
+        list_widget = QListWidget()
+        list_widget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+        list_widget.setStyleSheet(f"""
+            QListWidget {{
+                border: none;
+                background-color: {Color.WHITE};
+                font-size: 13px;
+                outline: none;
+            }}
+            QListWidget::item {{
+                padding: 8px 16px;
+                border-bottom: 1px solid {Color.BORDER_LIGHT};
+            }}
+            QListWidget::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_1};
+                color: {Color.PRIMARY_BLUE};
+            }}
+            QListWidget::item:hover {{
+                background-color: {Color.LIGHT_BACKGROUND};
+            }}
+        """)
+        list_widget.setFixedWidth(400)
+        list_widget.setMaximumHeight(350)
+        list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        list_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # Tags atualmente selecionadas
+        current_tags = self.current_filters.get('tags', [])
+
+        # Buscar tags da disciplina selecionada
+        try:
+            from src.controllers.adapters import criar_tag_controller
+            tag_controller = criar_tag_controller()
+            tags = tag_controller.listar_tags_por_disciplina(self.selected_discipline_uuid)
+            for tag in tags:
+                uuid = tag.get('uuid')
+                nome = tag.get('caminho_completo', tag.get('nome', ''))
+                nome_curto = tag.get('nome', '')
+                item = QListWidgetItem(nome)
+                item.setData(Qt.ItemDataRole.UserRole, uuid)
+                item.setData(Qt.ItemDataRole.UserRole + 1, nome_curto)
+                list_widget.addItem(item)
+                # Marcar como selecionado se já estiver no filtro
+                if uuid in current_tags:
+                    item.setSelected(True)
+        except Exception as e:
+            print(f"Erro ao carregar tags: {e}")
+
+        container_layout.addWidget(list_widget)
+
+        # Função para aplicar filtro imediatamente
+        def apply_filter_now():
+            selected_items = list_widget.selectedItems()
+            selected_tags = []
+            selected_names = []
+            for item in selected_items:
+                uuid = item.data(Qt.ItemDataRole.UserRole)
+                nome = item.data(Qt.ItemDataRole.UserRole + 1)
+                if uuid:
+                    selected_tags.append(uuid)
+                    selected_names.append(nome)
+            self._apply_tag_filter_multi(selected_tags, selected_names)
+
+        # Handler para seleção - aplica filtro imediatamente
+        list_widget.itemSelectionChanged.connect(apply_filter_now)
+
+        # Handler para limpar
+        def on_clear():
+            list_widget.clearSelection()
+            # apply_filter_now será chamado automaticamente via itemSelectionChanged
+
+        btn_clear.clicked.connect(on_clear)
+
+        # Adicionar container ao menu via QWidgetAction
+        widget_action = QWidgetAction(menu)
+        widget_action.setDefaultWidget(container)
+        menu.addAction(widget_action)
+
+        # Posicionar e mostrar o menu
+        pos = self.tag_filter_btn.mapToGlobal(self.tag_filter_btn.rect().bottomLeft())
+        menu.exec(pos)
+
+    def _apply_discipline_filter(self, uuid: Optional[str], name: Optional[str]):
+        """Apply discipline filter."""
+        if uuid:
+            self.selected_discipline_uuid = uuid
+            self.selected_discipline_name = name
+            self.discipline_filter_btn.setText(f"{name} ▼")
+            self._add_filter_chip(f"Disciplina: {name}", "disciplina")
+            # Habilitar botão de tags
+            self.tag_filter_btn.setEnabled(True)
+        else:
+            self.selected_discipline_uuid = None
+            self.selected_discipline_name = None
+            self.discipline_filter_btn.setText("Disciplina ▼")
+            self._remove_chip_by_key("disciplina")
+            # Desabilitar e resetar botão de tags
+            self.tag_filter_btn.setEnabled(False)
+            self.tag_filter_btn.setText("Conteúdo ▼")
+            # Remover filtro de tag também
+            self.current_filters.pop('tags', None)
+            self._remove_chip_by_key("tag")
+
+        # Nota: disciplina não filtra diretamente, apenas habilita o filtro de tags
+        self.current_page = 1
+        self._load_data(self.current_filters)
+
+    def _apply_tag_filter(self, uuid: Optional[str], name: Optional[str]):
+        """Apply tag/content filter."""
+        if uuid:
+            self.current_filters['tags'] = [uuid]
+            self.tag_filter_btn.setText(f"{name} ▼")
+            self._add_filter_chip(f"Conteúdo: {name}", "tag")
+        else:
+            self.current_filters.pop('tags', None)
+            self.tag_filter_btn.setText("Conteúdo ▼")
+            self._remove_chip_by_key("tag")
+        self.current_page = 1
+        self._load_data(self.current_filters)
+
+    def _apply_tag_filter_multi(self, uuids: List[str], names: List[str]):
+        """Apply multiple tag/content filters with OR logic."""
+        if uuids and len(uuids) > 0:
+            self.current_filters['tags'] = uuids
+            if len(names) == 1:
+                self.tag_filter_btn.setText(f"{names[0]} ▼")
+                self._add_filter_chip(f"Conteúdo: {names[0]}", "tag")
+            else:
+                self.tag_filter_btn.setText(f"{len(names)} conteúdos ▼")
+                # Criar texto resumido para o chip
+                if len(names) <= 2:
+                    chip_text = " ou ".join(names)
+                else:
+                    chip_text = f"{names[0]}, {names[1]} +{len(names)-2}"
+                self._add_filter_chip(f"Conteúdos: {chip_text}", "tag")
+        else:
+            self.current_filters.pop('tags', None)
+            self.tag_filter_btn.setText("Conteúdo ▼")
+            self._remove_chip_by_key("tag")
+        self.current_page = 1
+        self._load_data(self.current_filters)
+
+    def _remove_chip_by_key(self, filter_key: str):
+        """Remove a chip by its filter key."""
+        for i in range(self.chips_container.count()):
+            item = self.chips_container.itemAt(i)
+            if item and item.widget():
+                chip = item.widget()
+                if isinstance(chip, FilterChip) and chip.filter_key == filter_key:
+                    chip.deleteLater()
+                    break
+
+    def _clear_all_filters(self):
+        """Clear all filters and reset UI."""
+        # Limpar filtros
+        self.current_filters = {}
+        self.selected_tag_path = ""
+        self.selected_discipline_uuid = None
+        self.selected_discipline_name = None
+
+        # Limpar busca
+        self.search_input.clear()
+
+        # Resetar textos dos botões
+        self.source_filter_btn.setText("Fonte ▼")
+        self.difficulty_filter_btn.setText(f"{Text.FILTER_DIFFICULTY} ▼")
+        self.type_filter_btn.setText(f"{Text.FILTER_TYPE} ▼")
+        self.discipline_filter_btn.setText("Disciplina ▼")
+        self.tag_filter_btn.setText("Conteúdo ▼")
+        self.tag_filter_btn.setEnabled(False)
+
+        # Remover todos os chips
+        while self.chips_container.count():
+            item = self.chips_container.takeAt(0)
+            if item and item.widget():
+                item.widget().deleteLater()
+
+        # Esconder linha de chips
+        self.chips_frame.hide()
+
+        # Recarregar dados
+        self.current_page = 1
+        self._load_data()
 
     def _add_filter_chip(self, text: str, filter_key: str):
         """Add a filter chip to the filter bar."""
+        # Primeiro verificar se já existe um chip com essa chave e removê-lo
+        self._remove_chip_by_key(filter_key)
+
         chip = FilterChip(text, filter_key, self)
         chip.removed.connect(self._remove_filter)
-        self.chips_container.addWidget(chip)
+        # Inserir antes do stretch
+        self.chips_container.insertWidget(self.chips_container.count() - 1, chip)
+
+        # Mostrar a linha de chips
+        self.chips_frame.show()
 
     def _remove_filter(self, filter_key: str):
         """Remove a filter and refresh data."""
-        if filter_key in self.current_filters:
+        if filter_key == 'tags' or filter_key == 'tag':
+            self.current_filters.pop('tags', None)
+        elif filter_key in self.current_filters:
             del self.current_filters[filter_key]
+
+        # Reset button text based on filter key
+        if filter_key == 'fonte':
+            self.source_filter_btn.setText("Fonte ▼")
+        elif filter_key == 'dificuldade':
+            self.difficulty_filter_btn.setText(f"{Text.FILTER_DIFFICULTY} ▼")
+        elif filter_key == 'tipo':
+            self.type_filter_btn.setText(f"{Text.FILTER_TYPE} ▼")
+        elif filter_key == 'disciplina':
+            self.discipline_filter_btn.setText("Disciplina ▼")
+            self.selected_discipline_uuid = None
+            self.selected_discipline_name = None
+            # Também limpar tag quando disciplina é removida
+            self.tag_filter_btn.setText("Conteúdo ▼")
+            self.tag_filter_btn.setEnabled(False)
+            self.current_filters.pop('tags', None)
+            self._remove_chip_by_key("tag")
+        elif filter_key == 'tag':
+            self.tag_filter_btn.setText("Conteúdo ▼")
 
         # Remove chip widget
         for i in range(self.chips_container.count()):
@@ -588,8 +1052,24 @@ class QuestionBankPage(QWidget):
                     chip.deleteLater()
                     break
 
+        # Esconder linha de chips se não houver mais chips (apenas o stretch)
+        self._update_chips_visibility()
+
         self.current_page = 1
         self._load_data(self.current_filters)
+
+    def _update_chips_visibility(self):
+        """Atualiza a visibilidade da linha de chips."""
+        has_chips = False
+        for i in range(self.chips_container.count()):
+            item = self.chips_container.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), FilterChip):
+                has_chips = True
+                break
+        if has_chips:
+            self.chips_frame.show()
+        else:
+            self.chips_frame.hide()
 
     def set_tag_filter(self, tag_uuid: str, tag_path: str):
         """Set tag filter from sidebar selection."""
@@ -605,6 +1085,11 @@ class QuestionBankPage(QWidget):
     def refresh_data(self):
         """Public method to refresh question list."""
         self._load_data(self.current_filters)
+
+    def _on_edit_question_requested(self, questao_data: Dict):
+        """Handler para abrir formulário de edição de questão."""
+        # Emitir sinal para que a MainWindow abra o formulário de edição
+        self.edit_question_requested.emit(questao_data)
 
 
 if __name__ == '__main__':

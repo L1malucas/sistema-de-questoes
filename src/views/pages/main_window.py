@@ -104,6 +104,9 @@ class MainWindow(QMainWindow):
         self.question_editor_page.back_to_questions_requested.connect(self._on_question_editor_cancel)
         self.question_editor_page.save_requested.connect(self._on_question_save_requested)
 
+        # Conectar sinal de edição do banco de questões
+        self.question_bank_page.edit_question_requested.connect(self._on_edit_question_requested)
+
         # Inicializar controller de questões
         self.questao_controller = criar_questao_controller()
 
@@ -135,8 +138,10 @@ class MainWindow(QMainWindow):
         if action_enum == ActionEnum.CREATE_NEW:
             current_page_enum = self.navbar.nav_menu.current_page
             if current_page_enum == PageEnum.QUESTION_BANK:
+                # Limpar formulário antes de criar nova questão
+                self.question_editor_page.clear_form()
                 self._set_current_page(PageEnum.QUESTION_EDITOR)
-                self.toast.show_message("Creating a new question...", "success")
+                self.toast.show_message("Criando nova questão...", "success")
             elif current_page_enum == PageEnum.LISTS:
                 self.toast.show_message("Creating a new exam list...", "success")
                 # self._set_current_page(PageEnum.EXAM_LIST_EDITOR) # Assuming a dedicated editor
@@ -152,11 +157,17 @@ class MainWindow(QMainWindow):
 
     def _on_question_editor_cancel(self):
         """Handler para cancelar/voltar do editor de questões."""
+        # Limpar formulário ao cancelar
+        self.question_editor_page.clear_form()
         self._set_current_page(PageEnum.QUESTION_BANK)
 
     def _on_question_save_requested(self, question_data: dict):
-        """Handler para salvar questão do editor."""
+        """Handler para salvar questão do editor (criação ou edição)."""
         try:
+            # Verificar se é edição ou criação
+            is_editing = self.question_editor_page.is_editing
+            editing_id = self.question_editor_page.editing_question_id
+
             # Converter dados do editor para o formato do DTO
             tipo = 'OBJETIVA' if question_data.get('question_type') == 'objective' else 'DISCURSIVA'
 
@@ -179,31 +190,72 @@ class MainWindow(QMainWindow):
             if id_dificuldade and id_dificuldade < 1:
                 id_dificuldade = None
 
-            dto = QuestaoCreateDTO(
-                enunciado=question_data.get('statement', ''),
-                tipo=tipo,
-                ano=int(question_data.get('academic_year', 2026)) if question_data.get('academic_year') else 2026,
-                fonte=fonte,
-                id_dificuldade=id_dificuldade,
-                alternativas=alternativas_dto,
-                tags=question_data.get('tags', []),
-                observacoes=None
-            )
-
-            resultado = self.questao_controller.criar_questao_completa(dto)
-
-            if resultado:
-                codigo = resultado.get('codigo') if isinstance(resultado, dict) else resultado
-                self.toast.show_message(f"Questão salva com sucesso! Código: {codigo}", "success")
-                self._set_current_page(PageEnum.QUESTION_BANK)
-                # Atualizar lista de questões
-                if hasattr(self.question_bank_page, 'refresh'):
-                    self.question_bank_page.refresh()
+            if is_editing and editing_id:
+                # Modo edição - usar QuestaoUpdateDTO
+                from src.application.dtos import QuestaoUpdateDTO
+                dto = QuestaoUpdateDTO(
+                    id_questao=editing_id,
+                    enunciado=question_data.get('statement', ''),
+                    tipo=tipo,
+                    titulo=question_data.get('titulo'),
+                    ano=int(question_data.get('academic_year', 2026)) if question_data.get('academic_year') else 2026,
+                    id_dificuldade=id_dificuldade,
+                    alternativas=alternativas_dto,
+                    tags=question_data.get('tags', []),
+                    observacoes=None
+                )
+                sucesso = self.questao_controller.atualizar_questao_completa(dto)
+                if sucesso:
+                    self.toast.show_message(f"Questão {editing_id} atualizada com sucesso!", "success")
+                    # Limpar formulário e voltar para modo criação
+                    self.question_editor_page.clear_form()
+                    # Atualizar lista de questões
+                    if hasattr(self.question_bank_page, 'refresh_data'):
+                        self.question_bank_page.refresh_data()
+                    self._set_current_page(PageEnum.QUESTION_BANK)
+                else:
+                    self.toast.show_message("Erro ao atualizar a questão.", "error")
             else:
-                self.toast.show_message("Erro ao salvar a questão.", "error")
+                # Modo criação - usar QuestaoCreateDTO
+                dto = QuestaoCreateDTO(
+                    enunciado=question_data.get('statement', ''),
+                    tipo=tipo,
+                    titulo=question_data.get('titulo'),
+                    ano=int(question_data.get('academic_year', 2026)) if question_data.get('academic_year') else 2026,
+                    fonte=fonte,
+                    id_dificuldade=id_dificuldade,
+                    alternativas=alternativas_dto,
+                    tags=question_data.get('tags', []),
+                    observacoes=None
+                )
+
+                resultado = self.questao_controller.criar_questao_completa(dto)
+
+                if resultado:
+                    codigo = resultado.get('codigo') if isinstance(resultado, dict) else resultado
+                    self.toast.show_message(f"Questão criada com sucesso! Código: {codigo}", "success")
+                    # Limpar formulário
+                    self.question_editor_page.clear_form()
+                    # Atualizar lista de questões antes de mudar de página
+                    if hasattr(self.question_bank_page, 'refresh_data'):
+                        self.question_bank_page.refresh_data()
+                    self._set_current_page(PageEnum.QUESTION_BANK)
+                else:
+                    self.toast.show_message("Erro ao salvar a questão.", "error")
 
         except Exception as e:
             self.toast.show_message(f"Erro ao salvar: {str(e)}", "error")
+
+    def _on_edit_question_requested(self, questao_data: dict):
+        """Handler para abrir formulário de edição de questão."""
+        try:
+            # Carregar dados da questão no editor
+            self.question_editor_page.load_question_for_editing(questao_data)
+            # Navegar para a página do editor
+            self._set_current_page(PageEnum.QUESTION_EDITOR)
+
+        except Exception as e:
+            self.toast.show_message(f"Erro ao abrir editor: {str(e)}", "error")
 
     # def _update_sidebar_visibility(self, page_enum: PageEnum):
     #     """Shows or hides the sidebar based on the current page."""

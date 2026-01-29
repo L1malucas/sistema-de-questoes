@@ -77,6 +77,36 @@ class TagControllerORM:
             return None
 
     @staticmethod
+    def buscar_por_uuid(uuid: str) -> Optional[Dict[str, Any]]:
+        """
+        Busca tag por UUID
+
+        Args:
+            uuid: UUID da tag
+
+        Returns:
+            Dict com dados da tag ou None
+        """
+        try:
+            from src.models.orm.tag import Tag
+            from src.infrastructure.database import get_session
+
+            session = get_session()
+            tag = session.query(Tag).filter_by(uuid=uuid, ativo=True).first()
+            if tag:
+                return {
+                    'uuid': tag.uuid,
+                    'nome': tag.nome,
+                    'numeracao': tag.numeracao,
+                    'uuid_disciplina': tag.uuid_disciplina,
+                    'caminho_completo': tag.caminho_completo
+                }
+            return None
+        except Exception as e:
+            print(f"Erro ao buscar tag por UUID: {e}")
+            return None
+
+    @staticmethod
     def buscar_por_numeracao(numeracao: str) -> Optional[Dict[str, Any]]:
         """
         Busca tag por numeração
