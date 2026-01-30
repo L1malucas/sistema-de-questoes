@@ -231,6 +231,7 @@ class QuestaoService:
             'dificuldade': questao.dificuldade.codigo if questao.dificuldade else None,
             'observacoes': questao.observacoes,
             'tags': [{'uuid': tag.uuid, 'nome': tag.nome, 'numeracao': tag.numeracao} for tag in questao.tags if tag.ativo],
+            'niveis_escolares': [{'uuid': nivel.uuid, 'codigo': nivel.codigo, 'nome': nivel.nome} for nivel in questao.niveis_escolares if nivel.ativo],
             'alternativas': [
                 {
                     'uuid': alt.uuid,

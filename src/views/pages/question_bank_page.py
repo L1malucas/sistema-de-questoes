@@ -522,7 +522,8 @@ class QuestionBankPage(QWidget):
             'dificuldade': questao_data.get('dificuldade'),
             'observacoes': questao_data.get('observacoes'),
             'alternativas': questao_data.get('alternativas', []),
-            'tags': questao_data.get('tags', [])
+            'tags': questao_data.get('tags', []),
+            'niveis_escolares': questao_data.get('niveis_escolares', [])
         }
         
         # Extract resolucao from resposta dict

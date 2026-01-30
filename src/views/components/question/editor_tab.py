@@ -1,7 +1,7 @@
 # src/views/components/question/editor_tab.py
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QRadioButton, QButtonGroup, QScrollArea, QSizePolicy, QPushButton
+    QRadioButton, QButtonGroup, QScrollArea, QSizePolicy, QPushButton, QComboBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon, QPixmap, QIntValidator
@@ -58,7 +58,7 @@ class EditorTab(QWidget):
         metadata_layout.addLayout(type_toggle_layout)
         self.question_type_group.buttonClicked.connect(self._on_question_type_toggled)
 
-        # Academic Year, Origin/Source & Difficulty (same line)
+        # Academic Year, Origin/Source, School Level & Difficulty (same line)
         info_layout = QHBoxLayout()
         self.academic_year_input = TextInput(placeholder_text="Ano", parent=metadata_frame)
         self.academic_year_input.setValidator(self.get_year_validator())
@@ -69,7 +69,31 @@ class EditorTab(QWidget):
         self.origin_input.setMaximumWidth(180)
         info_layout.addWidget(self.origin_input)
 
-        info_layout.addSpacing(20)
+        info_layout.addSpacing(15)
+        info_layout.addWidget(QLabel("Nível:", metadata_frame))
+        self.school_level_combo = QComboBox(metadata_frame)
+        self.school_level_combo.setMinimumWidth(180)
+        self.school_level_combo.setMaximumWidth(220)
+        self.school_level_combo.setStyleSheet(f"""
+            QComboBox {{
+                padding: 6px 10px;
+                border: 1px solid {Color.BORDER_LIGHT};
+                border-radius: {Dimensions.BORDER_RADIUS_MD};
+                background-color: {Color.WHITE};
+                font-size: {Typography.FONT_SIZE_MD};
+            }}
+            QComboBox:hover {{
+                border-color: {Color.PRIMARY_BLUE};
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                padding-right: 10px;
+            }}
+        """)
+        self._load_school_levels()
+        info_layout.addWidget(self.school_level_combo)
+
+        info_layout.addSpacing(15)
         info_layout.addWidget(QLabel("Dificuldade:", metadata_frame))
         self.difficulty_group = QButtonGroup(self)
         self.difficulty_easy = QRadioButton("Fácil", metadata_frame)
@@ -292,12 +316,58 @@ class EditorTab(QWidget):
         # Connect signals for content changes to emit content_changed
         self.academic_year_input.textChanged.connect(self.content_changed.emit)
         self.origin_input.textChanged.connect(self.content_changed.emit)
+        self.school_level_combo.currentIndexChanged.connect(lambda: self.content_changed.emit())
         self.statement_input.textChanged.connect(self.content_changed.emit)
         self.answer_key_input.textChanged.connect(self.content_changed.emit)
         self.difficulty_group.buttonClicked.connect(lambda: self.content_changed.emit())
         for alt_widget in self.alternatives_widgets:
             alt_widget.text_input.textChanged.connect(self.content_changed.emit)
             alt_widget.radio_button.toggled.connect(self.content_changed.emit)
+
+    def _load_school_levels(self):
+        """Carrega os níveis escolares no combo box"""
+        try:
+            from src.controllers.adapters import listar_niveis_escolares
+            niveis = listar_niveis_escolares()
+
+            self.school_level_combo.clear()
+            self.school_level_combo.addItem("Selecione o nível...", None)
+
+            for nivel in niveis:
+                # Exibir código e nome: "EM - Ensino Médio"
+                display_text = f"{nivel['codigo']} - {nivel['nome']}"
+                self.school_level_combo.addItem(display_text, nivel['uuid'])
+        except Exception as e:
+            print(f"Erro ao carregar níveis escolares: {e}")
+            # Adicionar níveis padrão caso não consiga carregar do banco
+            self.school_level_combo.addItem("Selecione o nível...", None)
+            self.school_level_combo.addItem("EF1 - Ensino Fundamental I", "EF1")
+            self.school_level_combo.addItem("EF2 - Ensino Fundamental II", "EF2")
+            self.school_level_combo.addItem("EM - Ensino Médio", "EM")
+            self.school_level_combo.addItem("PRE - Pré-Vestibular", "PRE")
+            self.school_level_combo.addItem("SUP - Ensino Superior", "SUP")
+
+    def get_selected_school_level_uuid(self):
+        """Retorna o UUID do nível escolar selecionado"""
+        return self.school_level_combo.currentData()
+
+    def set_school_level_by_uuid(self, uuid):
+        """Define o nível escolar pelo UUID"""
+        if not uuid:
+            self.school_level_combo.setCurrentIndex(0)
+            return
+
+        for i in range(self.school_level_combo.count()):
+            if self.school_level_combo.itemData(i) == uuid:
+                self.school_level_combo.setCurrentIndex(i)
+                return
+
+        # Se não encontrou, tentar pelo código
+        for i in range(self.school_level_combo.count()):
+            item_data = self.school_level_combo.itemData(i)
+            if item_data and item_data == uuid:
+                self.school_level_combo.setCurrentIndex(i)
+                return
 
     def get_year_validator(self):
         # Using QIntValidator

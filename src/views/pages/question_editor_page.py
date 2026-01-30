@@ -183,6 +183,7 @@ class QuestionEditorPage(QWidget):
         # Gather data from editor tab
         self.question_data['academic_year'] = self.editor_tab.academic_year_input.text()
         self.question_data['origin'] = self.editor_tab.origin_input.text()
+        self.question_data['school_level_uuid'] = self.editor_tab.get_selected_school_level_uuid()
         self.question_data['statement'] = self.editor_tab.statement_input.toPlainText()
         self.question_data['question_type'] = self.editor_tab.current_question_type
         self.question_data['difficulty'] = self.editor_tab.difficulty_group.checkedId()
@@ -211,6 +212,15 @@ class QuestionEditorPage(QWidget):
         difficulty_id = self.question_data.get('difficulty', -1)
         difficulty_name = difficulty_map.get(difficulty_id, 'Não selecionada')
 
+        # Obter nome do nível escolar
+        school_level_name = '-'
+        school_level_uuid = self.question_data.get('school_level_uuid')
+        if school_level_uuid:
+            combo = self.editor_tab.school_level_combo
+            idx = combo.currentIndex()
+            if idx > 0:
+                school_level_name = combo.currentText()
+
         # Processar enunciado com formatações
         statement_raw = self.question_data.get('statement', '')
         statement_formatted = self._format_text_for_preview(statement_raw)
@@ -221,6 +231,7 @@ class QuestionEditorPage(QWidget):
         question_html = f"<h2 style='margin-bottom:10px;'>Pré-visualização da Questão</h2>"
         question_html += f"<p style='margin:3px 0;'><b>Ano:</b> {self.question_data.get('academic_year', '') or '-'}</p>"
         question_html += f"<p style='margin:3px 0;'><b>Origem:</b> {self.question_data.get('origin', '') or '-'}</p>"
+        question_html += f"<p style='margin:3px 0;'><b>Nível Escolar:</b> {school_level_name}</p>"
         question_html += f"<p style='margin:3px 0;'><b>Tipo:</b> {tipo_display}</p>"
         question_html += f"<p style='margin:3px 0;'><b>Dificuldade:</b> {difficulty_name}</p>"
         question_html += f"<h3 style='margin-top:15px; margin-bottom:8px;'>Enunciado:</h3>"
@@ -451,6 +462,7 @@ class QuestionEditorPage(QWidget):
         # Validacao completa para habilitar o botao de salvar
         statement_ok = bool(self.editor_tab.statement_input.toPlainText().strip())
         origin_ok = bool(self.editor_tab.origin_input.text().strip())
+        school_level_ok = bool(self.editor_tab.get_selected_school_level_uuid())
         tags_ok = bool(self.question_data.get('tags'))
 
         # Verificar alternativa correta se for objetiva
@@ -462,7 +474,7 @@ class QuestionEditorPage(QWidget):
             )
             correct_alt_ok = has_correct
 
-        self.save_button.setEnabled(statement_ok and origin_ok and tags_ok and correct_alt_ok)
+        self.save_button.setEnabled(statement_ok and origin_ok and school_level_ok and tags_ok and correct_alt_ok)
 
     def _validate_question(self) -> tuple:
         """Valida os dados da questao antes de salvar. Retorna (valido, mensagem_erro)."""
@@ -475,6 +487,10 @@ class QuestionEditorPage(QWidget):
         # Verificar origem/fonte
         if not self.editor_tab.origin_input.text().strip():
             errors.append("A origem/fonte da questao e obrigatoria.")
+
+        # Verificar nível escolar
+        if not self.editor_tab.get_selected_school_level_uuid():
+            errors.append("O nivel escolar e obrigatorio.")
 
         # Verificar tags
         if not self.question_data.get('tags'):
@@ -614,6 +630,16 @@ class QuestionEditorPage(QWidget):
         self.editor_tab.origin_input.setText(questao_data.get('fonte', '') or '')
         self.editor_tab.statement_input.setPlainText(questao_data.get('enunciado', '') or '')
 
+        # Carregar nível escolar
+        niveis = questao_data.get('niveis_escolares', [])
+        if niveis:
+            # Pegar o primeiro nível (pode ser adaptado para múltiplos níveis)
+            nivel = niveis[0] if isinstance(niveis, list) else niveis
+            nivel_uuid = nivel.get('uuid') if isinstance(nivel, dict) else nivel
+            self.editor_tab.set_school_level_by_uuid(nivel_uuid)
+        else:
+            self.editor_tab.school_level_combo.setCurrentIndex(0)
+
         # Tipo de questão
         tipo = questao_data.get('tipo', 'OBJETIVA')
         if tipo == 'OBJETIVA':
@@ -684,6 +710,9 @@ class QuestionEditorPage(QWidget):
         self.editor_tab.origin_input.clear()
         self.editor_tab.statement_input.clear()
         self.editor_tab.answer_key_input.clear()
+
+        # Resetar nível escolar
+        self.editor_tab.school_level_combo.setCurrentIndex(0)
 
         # Resetar tipo para objetiva
         self.editor_tab.objective_radio.setChecked(True)

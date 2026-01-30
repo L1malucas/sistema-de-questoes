@@ -424,3 +424,16 @@ def listar_fontes_questao():
         return [{'uuid': f.uuid, 'sigla': f.sigla, 'nome_completo': f.nome_completo} for f in fontes]
     finally:
         session.close()
+
+
+def listar_niveis_escolares():
+    """Lista todos os níveis escolares ativos"""
+    from src.database import session_manager
+    from src.models.orm import NivelEscolar
+
+    session = session_manager.create_session()
+    try:
+        niveis = session.query(NivelEscolar).filter_by(ativo=True).order_by(NivelEscolar.ordem).all()
+        return [{'uuid': n.uuid, 'codigo': n.codigo, 'nome': n.nome} for n in niveis]
+    finally:
+        session.close()
