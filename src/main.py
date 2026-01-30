@@ -190,7 +190,7 @@ def main():
 
         from src.views.pages.main_window import MainWindow
         window = MainWindow()
-        window.show()
+        window.showMaximized()
 
         logger.info("Sistema inicializado e janela principal exibida.")
         

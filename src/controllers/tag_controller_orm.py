@@ -89,19 +89,22 @@ class TagControllerORM:
         """
         try:
             from src.models.orm.tag import Tag
-            from src.infrastructure.database import get_session
+            from src.database import session_manager
 
-            session = get_session()
-            tag = session.query(Tag).filter_by(uuid=uuid, ativo=True).first()
-            if tag:
-                return {
-                    'uuid': tag.uuid,
-                    'nome': tag.nome,
-                    'numeracao': tag.numeracao,
-                    'uuid_disciplina': tag.uuid_disciplina,
-                    'caminho_completo': tag.caminho_completo
-                }
-            return None
+            session = session_manager.create_session()
+            try:
+                tag = session.query(Tag).filter_by(uuid=uuid, ativo=True).first()
+                if tag:
+                    return {
+                        'uuid': tag.uuid,
+                        'nome': tag.nome,
+                        'numeracao': tag.numeracao,
+                        'uuid_disciplina': tag.uuid_disciplina,
+                        'caminho_completo': tag.caminho_completo
+                    }
+                return None
+            finally:
+                session.close()
         except Exception as e:
             print(f"Erro ao buscar tag por UUID: {e}")
             return None

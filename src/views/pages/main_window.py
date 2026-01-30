@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
         self.central_layout.setSpacing(0)
 
         # 1. Navbar
-        self.navbar = Navbar(current_page=PageEnum.DASHBOARD, parent=self)
+        self.navbar = Navbar(current_page=PageEnum.QUESTION_BANK, parent=self)
         self.navbar.page_changed.connect(self._handle_page_change)
         self.navbar.action_clicked.connect(self._handle_action_clicked)
         self.central_layout.addWidget(self.navbar)
@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
         self.loading_spinner.hide() # Initially hidden
 
         self._initialize_pages()
-        self._set_current_page(PageEnum.DASHBOARD) # Set initial page
+        self._set_current_page(PageEnum.QUESTION_BANK) # Set initial page
 
         # Apply global theme
         ThemeManager.apply_global_theme(QApplication.instance())

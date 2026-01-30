@@ -104,11 +104,11 @@ class Tag(BaseModel):
     def caminho_completo(self) -> str:
         """Retorna o caminho completo da tag (ex: 'Numeros > Naturais > Primos')."""
         partes = [self.nome]
-        tag_atual = self.pai  # Assumindo que voce tem um relacionamento 'pai'
+        tag_atual = self.tag_pai
 
         while tag_atual:
             partes.insert(0, tag_atual.nome)
-            tag_atual = tag_atual.pai if hasattr(tag_atual, 'pai') else None
+            tag_atual = tag_atual.tag_pai
 
         return " > ".join(partes)
 

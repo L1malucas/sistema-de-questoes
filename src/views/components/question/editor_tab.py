@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon, QPixmap, QIntValidator
 from src.views.design.constants import Color, Spacing, Typography, Dimensions
-from src.views.components.common.inputs import TextInput, LatexTextArea
+from src.views.components.common.inputs import TextInput, LatexTextArea, FormattingToolbar
 
 class EditorTab(QWidget):
     """
@@ -91,6 +91,15 @@ class EditorTab(QWidget):
         # --- Question Statement ---
         self.scroll_layout.addWidget(QLabel("Enunciado da Questão:", self))
         self.statement_input = LatexTextArea(placeholder_text="Digite o enunciado da questão (suporta LaTeX)", parent=self)
+        self.statement_toolbar = FormattingToolbar(self.statement_input, self)
+        self.scroll_layout.addWidget(self.statement_toolbar)
+        # Ajustar estilo do textarea para conectar com a toolbar
+        self.statement_input.setStyleSheet(self.statement_input.styleSheet() + """
+            QTextEdit {
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
+            }
+        """)
         self.scroll_layout.addWidget(self.statement_input)
         self.add_image_statement_button = QPushButton("+ Imagem", self)
         self.add_image_statement_button.setToolTip("Adicionar imagem ao enunciado")
@@ -135,6 +144,15 @@ class EditorTab(QWidget):
         self.answer_key_layout.setSpacing(Spacing.SM)
         self.scroll_layout.addWidget(QLabel("Chave de Resposta (para questões discursivas):", self))
         self.answer_key_input = LatexTextArea(placeholder_text="Digite a chave de resposta (suporta LaTeX)", parent=self)
+        self.answer_key_toolbar = FormattingToolbar(self.answer_key_input, self)
+        self.answer_key_layout.addWidget(self.answer_key_toolbar)
+        # Ajustar estilo do textarea para conectar com a toolbar
+        self.answer_key_input.setStyleSheet(self.answer_key_input.styleSheet() + """
+            QTextEdit {
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
+            }
+        """)
         self.answer_key_layout.addWidget(self.answer_key_input)
         self.add_image_answer_button = QPushButton("+ Imagem", self)
         self.add_image_answer_button.setToolTip("Adicionar imagem à resposta")

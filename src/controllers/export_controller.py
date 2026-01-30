@@ -2,7 +2,10 @@
 Controller para gerenciar a exportação de listas e outros dados.
 """
 import logging
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import List
 
@@ -47,6 +50,336 @@ class ExportController:
                 return f"\n\n\\begin{{minipage}}{{\\linewidth}}\n\\includegraphics[scale={escala}]{{{caminho_latex}}}\n\\end{{minipage}}\n\n"
 
         return re.sub(pattern, replace_image, texto)
+
+    def _escape_preservando_comandos(self, texto: str) -> str:
+        """
+        Escapa caracteres especiais do LaTeX, mas preserva comandos LaTeX já gerados.
+
+        Usa abordagem de placeholders para preservar comandos LaTeX de listas e tabelas.
+
+        Args:
+            texto: Texto com possíveis comandos LaTeX
+
+        Returns:
+            Texto com caracteres escapados, mas comandos LaTeX preservados
+        """
+        # Padrões de comandos LaTeX a preservar (listas e tabelas)
+        patterns = [
+            # Comandos de lista
+            r'\\begin\{itemize\}',
+            r'\\end\{itemize\}',
+            r'\\begin\{enumerate\}(?:\[label=\\[a-zA-Z]+\*[\.\)]\])?',
+            r'\\end\{enumerate\}',
+            r'\\item\s',
+            # Comandos de tabela
+            r'\\begin\{tabular\}\{[^}]+\}',
+            r'\\end\{tabular\}',
+            r'\\hline',
+            r'\\textbf\{[^}]*\}',
+            r'\s*&\s*',  # Separador de células
+            r'\s*\\\\\s*',  # Quebra de linha em tabela
+        ]
+
+        # Salvar comandos com placeholders
+        preserved = {}
+        counter = [0]
+
+        def save_command(match):
+            key = f"__LATEX_CMD_{counter[0]}__"
+            preserved[key] = match.group(0)
+            counter[0] += 1
+            return key
+
+        # Substituir cada padrão por placeholder
+        texto_temp = texto
+        for pattern in patterns:
+            texto_temp = re.sub(pattern, save_command, texto_temp)
+
+        # Escapar o texto (sem os comandos LaTeX)
+        texto_escaped = escape_latex(texto_temp)
+
+        # Restaurar os comandos LaTeX
+        for key, value in preserved.items():
+            texto_escaped = texto_escaped.replace(key, value)
+
+        return texto_escaped
+
+    def _processar_formatacao_celula(self, cell_text: str) -> str:
+        r"""
+        Processa formatações de uma célula de tabela e converte para LaTeX.
+
+        Formatos suportados:
+        - <b>texto</b> -> \textbf{texto}
+        - <i>texto</i> -> \textit{texto}
+        - <u>texto</u> -> \underline{texto}
+        - <sup>texto</sup> -> \textsuperscript{texto}
+        - <sub>texto</sub> -> \textsubscript{texto}
+        - [COR:#hexcolor]texto[/COR] -> \cellcolor[HTML]{hexcolor}texto
+
+        Args:
+            cell_text: Texto da célula com possíveis formatações
+
+        Returns:
+            Texto convertido para LaTeX
+        """
+        result = cell_text
+
+        # Processar cor de fundo primeiro
+        color_pattern = re.compile(r'\[COR:#([a-fA-F0-9]{6})\](.*?)\[/COR\]', re.DOTALL)
+        color_match = color_pattern.search(result)
+        cell_color = None
+        if color_match:
+            cell_color = color_match.group(1).upper()
+            result = color_pattern.sub(r'\2', result)
+
+        # Extrair formatações ANTES do escape
+        # Usar placeholders para preservar as formatações
+        format_placeholders = {}
+        placeholder_counter = [0]
+
+        def extract_format(pattern, latex_cmd):
+            nonlocal result
+            def replacer(match):
+                inner_text = match.group(1)
+                # Escapar o texto interno
+                escaped_inner = escape_latex(inner_text)
+                key = f"__FMT_{placeholder_counter[0]}__"
+                # Usar concatenação para evitar problema com \u sendo interpretado como unicode
+                format_placeholders[key] = '\\' + latex_cmd + '{' + escaped_inner + '}'
+                placeholder_counter[0] += 1
+                return key
+            result = re.sub(pattern, replacer, result)
+
+        # Processar formatações (ordem: mais interno primeiro)
+        extract_format(r'<sup>(.*?)</sup>', 'textsuperscript')
+        extract_format(r'<sub>(.*?)</sub>', 'textsubscript')
+        extract_format(r'<b>(.*?)</b>', 'textbf')
+        extract_format(r'<i>(.*?)</i>', 'textit')
+        extract_format(r'<u>(.*?)</u>', 'underline')
+
+        # Escapar o texto restante (que não está em tags)
+        result = escape_latex(result)
+
+        # Restaurar as formatações
+        for key, value in format_placeholders.items():
+            result = result.replace(key, value)
+
+        # Adicionar cor de fundo se definida
+        if cell_color:
+            result = '\\cellcolor[HTML]{' + cell_color + '}' + result
+
+        return result
+
+    def _processar_tabelas_visuais(self, texto: str) -> str:
+        """
+        Processa tabelas no formato visual e converte para LaTeX.
+
+        Formato de entrada:
+        [TABELA]
+        [CABECALHO]Col1 | Col2 | Col3[/CABECALHO]
+        Cell1 | Cell2 | Cell3
+        Cell4 | Cell5 | Cell6
+        [/TABELA]
+
+        Args:
+            texto: Texto com tabelas em formato visual
+
+        Returns:
+            Texto com tabelas convertidas para LaTeX
+        """
+        # Padrão para encontrar tabelas
+        table_pattern = re.compile(
+            r'\[TABELA\]\s*\n(.*?)\[/TABELA\]',
+            re.DOTALL
+        )
+
+        def convert_table(match):
+            table_content = match.group(1).strip()
+            lines = table_content.split('\n')
+
+            if not lines:
+                return ''
+
+            # Detectar número de colunas pela primeira linha
+            first_line = lines[0]
+            # Remover marcadores de cabeçalho e formatação para contar colunas
+            clean_first = re.sub(r'\[CABECALHO\]|\[/CABECALHO\]|\[COR:[^\]]+\]|\[/COR\]', '', first_line)
+            num_cols = len(clean_first.split('|'))
+
+            # Criar especificação de colunas (centralizado)
+            col_spec = '|' + '|'.join(['c'] * num_cols) + '|'
+
+            latex_lines = []
+            # Centralizar e ajustar largura para 0.8 da página com fonte menor
+            latex_lines.append('\\begin{center}')
+            latex_lines.append('\\small')
+            latex_lines.append('\\resizebox{0.8\\linewidth}{!}{%')
+            latex_lines.append('\\begin{tabular}{' + col_spec + '}')
+            latex_lines.append('\\hline')
+
+            for i, line in enumerate(lines):
+                line = line.strip()
+                if not line:
+                    continue
+
+                # Verificar se é cabeçalho
+                is_header = '[CABECALHO]' in line
+                if is_header:
+                    line = line.replace('[CABECALHO]', '').replace('[/CABECALHO]', '')
+
+                # Separar células
+                cells = [cell.strip() for cell in line.split('|')]
+
+                # Processar formatação de cada célula
+                processed_cells = []
+                for cell in cells:
+                    processed = self._processar_formatacao_celula(cell)
+                    if is_header and not processed.startswith('\\textbf') and not processed.startswith('\\cellcolor'):
+                        # Adicionar negrito ao cabeçalho se não tiver
+                        processed = '\\textbf{' + processed + '}'
+                    processed_cells.append(processed)
+
+                latex_lines.append(' & '.join(processed_cells) + ' \\\\')
+                latex_lines.append('\\hline')
+
+            latex_lines.append('\\end{tabular}')
+            latex_lines.append('}')  # Fecha resizebox
+            latex_lines.append('\\end{center}')
+
+            return '\n'.join(latex_lines)
+
+        return table_pattern.sub(convert_table, texto)
+
+    def _processar_listas(self, texto: str) -> str:
+        """
+        Processa listas visuais (itemizadas e enumeradas) e converte para LaTeX.
+
+        IMPORTANTE: Para evitar falsos positivos, os padrões exigem que a linha
+        comece com 2-4 espaços seguidos pelo marcador (como gerado pelo diálogo de listas).
+
+        Formatos suportados:
+        - Itemizadas: •, ○, ■, □, ▸, –, ✓, ★
+        - Enumeradas: 1., a), A), i., I.
+
+        Args:
+            texto: Texto com listas em formato visual
+
+        Returns:
+            Texto com listas convertidas para LaTeX
+        """
+        lines = texto.split('\n')
+        result = []
+        in_itemize = False
+        in_enumerate = False
+        enumerate_type = None
+
+        # Padrões para detectar itens de lista
+        # IMPORTANTE: Exigem 2-4 espaços no início para evitar falsos positivos
+        # O diálogo de listas gera: "   • Item" (3 espaços)
+        itemize_symbols = r'[•○■□▸✓★]'
+        itemize_pattern = re.compile(rf'^[ ]{{2,4}}({itemize_symbols})\s+(.+)$')
+
+        # Enumerate patterns - também exigem 2-4 espaços no início
+        arabic_pattern = re.compile(r'^[ ]{2,4}(\d+)\.\s+(.+)$')  # 1. 2. 3.
+        alpha_lower_pattern = re.compile(r'^[ ]{2,4}([a-z])\)\s+(.+)$')  # a) b) c)
+        alpha_upper_pattern = re.compile(r'^[ ]{2,4}([A-Z])\)\s+(.+)$')  # A) B) C)
+        roman_lower_pattern = re.compile(r'^[ ]{2,4}(i{1,3}|iv|vi{0,3}|ix|xi{0,3})\.\s+(.+)$')  # i. ii. iii.
+        roman_upper_pattern = re.compile(r'^[ ]{2,4}(I{1,3}|IV|VI{0,3}|IX|XI{0,3})\.\s+(.+)$')  # I. II. III.
+
+        def close_list():
+            nonlocal in_itemize, in_enumerate, enumerate_type
+            if in_itemize:
+                result.append('\\end{itemize}')
+                in_itemize = False
+            if in_enumerate:
+                result.append('\\end{enumerate}')
+                in_enumerate = False
+                enumerate_type = None
+
+        for line in lines:
+            # Verificar lista itemizada
+            itemize_match = itemize_pattern.match(line)
+            if itemize_match:
+                if not in_itemize:
+                    if in_enumerate:
+                        close_list()
+                    result.append('\\begin{itemize}')
+                    in_itemize = True
+                item_text = itemize_match.group(2)
+                result.append(f'    \\item {item_text}')
+                continue
+
+            # Verificar lista enumerada - arábico (1. 2. 3.)
+            arabic_match = arabic_pattern.match(line)
+            if arabic_match:
+                if not in_enumerate or enumerate_type != 'arabic':
+                    close_list()
+                    result.append('\\begin{enumerate}')
+                    in_enumerate = True
+                    enumerate_type = 'arabic'
+                item_text = arabic_match.group(2)
+                result.append(f'    \\item {item_text}')
+                continue
+
+            # Verificar lista enumerada - alfabético minúsculo (a) b) c))
+            alpha_lower_match = alpha_lower_pattern.match(line)
+            if alpha_lower_match:
+                if not in_enumerate or enumerate_type != 'alpha_lower':
+                    close_list()
+                    result.append('\\begin{enumerate}[label=\\alph*)]')
+                    in_enumerate = True
+                    enumerate_type = 'alpha_lower'
+                item_text = alpha_lower_match.group(2)
+                result.append(f'    \\item {item_text}')
+                continue
+
+            # Verificar lista enumerada - alfabético maiúsculo (A) B) C))
+            alpha_upper_match = alpha_upper_pattern.match(line)
+            if alpha_upper_match:
+                if not in_enumerate or enumerate_type != 'alpha_upper':
+                    close_list()
+                    result.append('\\begin{enumerate}[label=\\Alph*)]')
+                    in_enumerate = True
+                    enumerate_type = 'alpha_upper'
+                item_text = alpha_upper_match.group(2)
+                result.append(f'    \\item {item_text}')
+                continue
+
+            # Verificar lista enumerada - romano minúsculo (i. ii. iii.)
+            roman_lower_match = roman_lower_pattern.match(line)
+            if roman_lower_match and roman_lower_match.group(1).islower():
+                if not in_enumerate or enumerate_type != 'roman_lower':
+                    close_list()
+                    result.append('\\begin{enumerate}[label=\\roman*.]')
+                    in_enumerate = True
+                    enumerate_type = 'roman_lower'
+                item_text = roman_lower_match.group(2)
+                result.append(f'    \\item {item_text}')
+                continue
+
+            # Verificar lista enumerada - romano maiúsculo (I. II. III.)
+            if roman_upper_pattern.match(line):
+                roman_upper_match = roman_upper_pattern.match(line)
+                if not in_enumerate or enumerate_type != 'roman_upper':
+                    close_list()
+                    result.append('\\begin{enumerate}[label=\\Roman*.]')
+                    in_enumerate = True
+                    enumerate_type = 'roman_upper'
+                item_text = roman_upper_match.group(2)
+                result.append(f'    \\item {item_text}')
+                continue
+
+            # Linha não é item de lista
+            # Fechar listas abertas se linha não vazia (parágrafo normal)
+            if line.strip() and (in_itemize or in_enumerate):
+                close_list()
+
+            result.append(line)
+
+        # Fechar qualquer lista aberta no final
+        close_list()
+
+        return '\n'.join(result)
 
     def _processar_tabelas(self, texto: str) -> str:
         """
@@ -162,9 +495,12 @@ class ExportController:
         questoes_latex = []
         for i, questao in enumerate(lista_dados['questoes'], 1):
             enunciado_raw = questao.get('enunciado', '')
-            # Primeiro escapar o texto, depois processar imagens e tabelas
-            # (imagens e tabelas geram LaTeX puro que não precisa de escape)
-            enunciado_escaped = escape_latex(enunciado_raw)
+            # Processar tabelas visuais PRIMEIRO (converte [TABELA] para LaTeX)
+            enunciado_com_tabelas = self._processar_tabelas_visuais(enunciado_raw)
+            # Processar listas (converte símbolos visuais para LaTeX)
+            enunciado_com_listas = self._processar_listas(enunciado_com_tabelas)
+            # Escapar apenas o texto que não é comando LaTeX
+            enunciado_escaped = self._escape_preservando_comandos(enunciado_com_listas)
             enunciado = self._processar_imagens_inline(enunciado_escaped)
             enunciado = self._processar_tabelas(enunciado)
             fonte = questao.get('fonte') or ''
@@ -186,7 +522,10 @@ class ExportController:
                 item += "\\begin{enumerate}[label=\\Alph*)]\n"
                 for alt in alternativas:
                     texto_alt_raw = alt.get('texto', '')
-                    texto_alt_escaped = escape_latex(texto_alt_raw)
+                    # Processar tabelas e listas nas alternativas também
+                    texto_alt_com_tabelas = self._processar_tabelas_visuais(texto_alt_raw)
+                    texto_alt_com_listas = self._processar_listas(texto_alt_com_tabelas)
+                    texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_listas)
                     texto_alt = self._processar_imagens_inline(texto_alt_escaped, centralizar=False)
                     texto_alt = self._processar_tabelas(texto_alt)
                     item += f"    \\item {texto_alt}\n"
@@ -254,9 +593,33 @@ class ExportController:
         if opcoes.tipo_exportacao == 'direta':
             logger.info(f"Compilando LaTeX para PDF para lista ID {opcoes.id_lista}...")
             pdf_path = self.export_service.compilar_latex_para_pdf(latex_content, output_dir, base_filename)
+            # Abrir o PDF automaticamente após a geração
+            self._abrir_arquivo(pdf_path)
             return pdf_path
         else: # 'manual'
             tex_path = output_dir / f"{base_filename}.tex"
             logger.info(f"Escrevendo arquivo .tex manual para: {tex_path}")
             tex_path.write_text(latex_content, encoding='utf-8')
             return tex_path
+
+    def _abrir_arquivo(self, caminho: Path) -> None:
+        """
+        Abre um arquivo com o aplicativo padrão do sistema.
+
+        Args:
+            caminho: Caminho do arquivo a ser aberto
+        """
+        try:
+            caminho_str = str(caminho)
+            if sys.platform == 'win32':
+                # Windows
+                os.startfile(caminho_str)
+            elif sys.platform == 'darwin':
+                # macOS
+                subprocess.run(['open', caminho_str], check=True)
+            else:
+                # Linux e outros
+                subprocess.run(['xdg-open', caminho_str], check=True)
+            logger.info(f"Arquivo aberto: {caminho_str}")
+        except Exception as e:
+            logger.warning(f"Não foi possível abrir o arquivo automaticamente: {e}")

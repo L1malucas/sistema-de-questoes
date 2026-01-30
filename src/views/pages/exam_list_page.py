@@ -339,7 +339,6 @@ class ExamListPage(QWidget):
                 border-color: {Color.PRIMARY_BLUE};
             }}
         """)
-        self._load_templates()
         self.template_combo.currentIndexChanged.connect(self._on_template_changed)
         layout.addWidget(self.template_combo)
 
@@ -395,6 +394,9 @@ class ExamListPage(QWidget):
 
         self.wallon_fields_frame.setVisible(False)
         layout.addWidget(self.wallon_fields_frame)
+
+        # Carregar templates após criar wallon_fields_frame
+        self._load_templates()
 
         # Column Layout Options
         columns_label = QLabel("Layout:", scroll_content)
