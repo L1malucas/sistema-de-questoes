@@ -62,6 +62,56 @@ def escape_latex(text: str) -> str:
     for char, replacement in replacements:
         text = text.replace(char, replacement)
 
+    # 6.1 Substituir caracteres Unicode problemáticos
+    # Esses caracteres não são suportados pelo pdflatex por padrão
+    unicode_replacements = [
+        ('✓', ''),      # Checkmark - remover (redundante com gabarito)
+        ('✗', ''),      # X mark - remover
+        ('★', '*'),     # Estrela cheia
+        ('☆', '*'),     # Estrela vazia
+        ('→', r'$\rightarrow$'),  # Seta direita
+        ('←', r'$\leftarrow$'),   # Seta esquerda
+        ('↔', r'$\leftrightarrow$'),  # Seta dupla
+        ('≤', r'$\leq$'),    # Menor ou igual
+        ('≥', r'$\geq$'),    # Maior ou igual
+        ('≠', r'$\neq$'),    # Diferente
+        ('±', r'$\pm$'),     # Mais ou menos
+        ('×', r'$\times$'),  # Multiplicação
+        ('÷', r'$\div$'),    # Divisão
+        ('°', r'$^\circ$'),  # Grau
+        ('²', r'$^2$'),      # Quadrado
+        ('³', r'$^3$'),      # Cubo
+        ('½', r'$\frac{1}{2}$'),  # Meio
+        ('¼', r'$\frac{1}{4}$'),  # Um quarto
+        ('¾', r'$\frac{3}{4}$'),  # Três quartos
+        ('∞', r'$\infty$'),  # Infinito
+        ('√', r'$\sqrt{}$'), # Raiz quadrada (símbolo isolado)
+        ('∑', r'$\sum$'),    # Somatório
+        ('∏', r'$\prod$'),   # Produtório
+        ('∫', r'$\int$'),    # Integral
+        ('∂', r'$\partial$'), # Derivada parcial
+        ('∈', r'$\in$'),     # Pertence
+        ('∉', r'$\notin$'),  # Não pertence
+        ('⊂', r'$\subset$'), # Subconjunto
+        ('⊃', r'$\supset$'), # Superconjunto
+        ('∪', r'$\cup$'),    # União
+        ('∩', r'$\cap$'),    # Interseção
+        ('∅', r'$\emptyset$'), # Conjunto vazio
+        ('∀', r'$\forall$'), # Para todo
+        ('∃', r'$\exists$'), # Existe
+        ('¬', r'$\neg$'),    # Negação
+        ('∧', r'$\land$'),   # E lógico
+        ('∨', r'$\lor$'),    # Ou lógico
+        ('⇒', r'$\Rightarrow$'),  # Implica
+        ('⇔', r'$\Leftrightarrow$'),  # Se e somente se
+        ('≈', r'$\approx$'), # Aproximadamente
+        ('∝', r'$\propto$'), # Proporcional
+        ('·', r'$\cdot$'),   # Ponto de multiplicação
+    ]
+
+    for char, replacement in unicode_replacements:
+        text = text.replace(char, replacement)
+
     # 7. Escapar $ apenas quando seguido de espaço ou dígito (provavelmente moeda)
     text = re.sub(r'\$(?=\s|\d)', r'\\$', text)
 

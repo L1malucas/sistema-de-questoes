@@ -593,8 +593,6 @@ class ExportController:
         if opcoes.tipo_exportacao == 'direta':
             logger.info(f"Compilando LaTeX para PDF para lista ID {opcoes.id_lista}...")
             pdf_path = self.export_service.compilar_latex_para_pdf(latex_content, output_dir, base_filename)
-            # Abrir o PDF automaticamente após a geração
-            self._abrir_arquivo(pdf_path)
             return pdf_path
         else: # 'manual'
             tex_path = output_dir / f"{base_filename}.tex"
@@ -602,7 +600,7 @@ class ExportController:
             tex_path.write_text(latex_content, encoding='utf-8')
             return tex_path
 
-    def _abrir_arquivo(self, caminho: Path) -> None:
+    def abrir_arquivo(self, caminho: Path) -> None:
         """
         Abre um arquivo com o aplicativo padrão do sistema.
 
@@ -623,3 +621,323 @@ class ExportController:
             logger.info(f"Arquivo aberto: {caminho_str}")
         except Exception as e:
             logger.warning(f"Não foi possível abrir o arquivo automaticamente: {e}")
+
+    def _obter_variantes_questao(self, codigo_questao: str) -> List[dict]:
+        """
+        Obtém as variantes de uma questão.
+
+        Args:
+            codigo_questao: Código da questão original
+
+        Returns:
+            Lista de dicts com dados das variantes ordenadas por código
+        """
+        try:
+            variantes = services.questao.obter_variantes(codigo_questao)
+            # Ordenar por código para garantir ordem consistente (A, B, C)
+            return sorted(variantes, key=lambda v: v.get('codigo', ''))
+        except Exception as e:
+            logger.warning(f"Erro ao obter variantes de {codigo_questao}: {e}")
+            return []
+
+    def _randomizar_alternativas_com_gabarito(self, alternativas: List[dict], resposta_original: str, seed: int) -> tuple:
+        """
+        Randomiza a ordem das alternativas e retorna a nova letra da resposta correta.
+
+        Args:
+            alternativas: Lista de alternativas
+            resposta_original: Letra da resposta correta original (ex: "A", "B", etc.)
+            seed: Seed para randomização (garante reprodutibilidade)
+
+        Returns:
+            Tuple (alternativas_randomizadas, nova_resposta)
+        """
+        import random
+
+        if not alternativas:
+            return alternativas, resposta_original
+
+        # Usar seed para garantir que a mesma versão sempre gere a mesma ordem
+        rng = random.Random(seed)
+
+        # Letras padrão
+        letras = ['A', 'B', 'C', 'D', 'E']
+
+        # Copiar alternativas e atribuir letra original baseada na posição (se não tiver)
+        alternativas_copia = []
+        for idx, alt in enumerate(alternativas):
+            alt_copy = alt.copy()
+            # Se não tem letra, usar a posição
+            letra_atual = alt.get('letra', letras[idx] if idx < len(letras) else str(idx))
+            alt_copy['letra_original'] = letra_atual
+            alternativas_copia.append(alt_copy)
+
+        # Embaralhar
+        rng.shuffle(alternativas_copia)
+
+        # Atualizar letras e encontrar nova posição da resposta correta
+        nova_resposta = resposta_original
+
+        for i, alt in enumerate(alternativas_copia):
+            if i < len(letras):
+                # Verificar se esta era a alternativa correta
+                letra_original = alt.get('letra_original', '').upper()
+                if letra_original == resposta_original.upper():
+                    nova_resposta = letras[i]
+                alt['letra'] = letras[i]
+                # Remover campo temporário
+                if 'letra_original' in alt:
+                    del alt['letra_original']
+
+        logger.info(f"Alternativas randomizadas: resposta {resposta_original} -> {nova_resposta}")
+        return alternativas_copia, nova_resposta
+
+    def _obter_versao_questao_ciclica(self, questao: dict, indice_versao: int) -> dict:
+        """
+        Obtém a versão da questão a ser usada de forma cíclica.
+
+        Lógica:
+        - índice 0 (TIPO A): questão original
+        - índice 1 (TIPO B): variante 1 (se existir), senão original
+        - índice 2 (TIPO C): variante 2 (se existir), senão cicla
+        - índice 3 (TIPO D): cicla de volta
+
+        Se a questão tem 2 variantes e pede 4 versões:
+        A=original, B=var1, C=var2, D=original
+
+        Args:
+            questao: Dados da questão original
+            indice_versao: Índice da versão (0=A, 1=B, 2=C, 3=D)
+
+        Returns:
+            Dados da questão a ser usada
+        """
+        codigo_questao = questao.get('codigo', '')
+        variantes = self._obter_variantes_questao(codigo_questao)
+
+        # Montar lista: [original, variante1, variante2, ...]
+        todas_versoes = [questao]  # índice 0 = original
+
+        for var in variantes:
+            var_data = services.questao.buscar_questao(var['codigo'])
+            if var_data:
+                todas_versoes.append(var_data)
+
+        # Usar índice cíclico
+        indice_ciclico = indice_versao % len(todas_versoes)
+        questao_escolhida = todas_versoes[indice_ciclico]
+
+        if indice_ciclico == 0:
+            logger.info(f"Questão {codigo_questao}: usando ORIGINAL para TIPO {chr(65 + indice_versao)}")
+        else:
+            logger.info(f"Questão {codigo_questao}: usando VARIANTE {indice_ciclico} para TIPO {chr(65 + indice_versao)}")
+
+        return questao_escolhida
+
+    def _randomizar_ordem_questoes(self, questoes: List[dict], seed: int) -> List[dict]:
+        """
+        Randomiza a ordem das questões mantendo consistência com a seed.
+
+        Args:
+            questoes: Lista de questões
+            seed: Seed para randomização
+
+        Returns:
+            Lista de questões com ordem randomizada
+        """
+        import random
+
+        if not questoes:
+            return questoes
+
+        rng = random.Random(seed)
+        questoes_copia = questoes.copy()
+        rng.shuffle(questoes_copia)
+
+        return questoes_copia
+
+    def _gerar_conteudo_latex_randomizado(self, opcoes: ExportOptionsDTO, indice_versao: int) -> str:
+        """
+        Gera o conteúdo LaTeX para uma versão randomizada específica.
+
+        Lógica:
+        - A ORDEM das questões é randomizada para cada versão
+        - Para cada questão, usa-se a versão cíclica (original, var1, var2, original, ...)
+
+        Args:
+            opcoes: Opções de exportação
+            indice_versao: Índice da versão (0=A, 1=B, 2=C, 3=D)
+
+        Returns:
+            Conteúdo LaTeX completo
+        """
+        import random
+
+        # 1. Buscar dados da lista
+        lista_dados = services.lista.buscar_lista(opcoes.id_lista)
+        if not lista_dados:
+            raise ValueError(f"Lista com código {opcoes.id_lista} não encontrada.")
+
+        # 2. Carregar o template base
+        template_content = self._carregar_template(opcoes.template_latex)
+
+        # 3. Substituir placeholders do cabeçalho
+        titulo_com_tipo = f"{lista_dados['titulo']}-{opcoes.sufixo_versao}"
+        template_content = template_content.replace("[TITULO_LISTA]", escape_latex(titulo_com_tipo))
+
+        # Substituir placeholders específicos de templates
+        if opcoes.trimestre:
+            template_content = template_content.replace("[TRIMESTRE]", escape_latex(opcoes.trimestre))
+        if opcoes.professor:
+            template_content = template_content.replace("[PROFESSOR]", escape_latex(opcoes.professor))
+        if opcoes.disciplina:
+            template_content = template_content.replace("[DISCIPLINA]", escape_latex(opcoes.disciplina))
+        if opcoes.ano:
+            template_content = template_content.replace("[ANO]", escape_latex(opcoes.ano))
+
+        # Fórmulas
+        formulas = lista_dados.get('formulas', '') or ''
+        if formulas:
+            formulas_block = f"\\begin{{tcolorbox}}[colback=white, colframe=black, boxrule=0.5pt, title=Fórmulas, fonttitle=\\bfseries]\n{formulas}\n\\end{{tcolorbox}}\n\\vspace{{0.5cm}}"
+            template_content = template_content.replace("% [FORMULAS_AQUI]", formulas_block)
+        else:
+            template_content = template_content.replace("% [FORMULAS_AQUI]", "")
+
+        # 4. Randomizar a ORDEM das questões
+        questoes_originais = lista_dados.get('questoes', [])
+        seed_ordem = indice_versao * 12345  # Seed diferente para cada versão
+        questoes_randomizadas = self._randomizar_ordem_questoes(questoes_originais, seed_ordem)
+
+        logger.info(f"TIPO {chr(65 + indice_versao)}: ordem das questões randomizada com seed {seed_ordem}")
+
+        # 5. Gerar o bloco de questões
+        # Armazenar mapeamento de respostas para o gabarito
+        respostas_gabarito = {}
+
+        questoes_latex = []
+        for i, questao in enumerate(questoes_randomizadas, 1):
+            # Verificar se a questão tem variantes
+            codigo_questao = questao.get('codigo', '')
+            variantes = self._obter_variantes_questao(codigo_questao)
+            tem_variantes = len(variantes) > 0
+
+            # Obter a versão cíclica da questão (original ou variante)
+            questao_para_usar = self._obter_versao_questao_ciclica(questao, indice_versao)
+
+            enunciado_raw = questao_para_usar.get('enunciado', '')
+            # Processar formatações
+            enunciado_com_tabelas = self._processar_tabelas_visuais(enunciado_raw)
+            enunciado_com_listas = self._processar_listas(enunciado_com_tabelas)
+            enunciado_escaped = self._escape_preservando_comandos(enunciado_com_listas)
+            enunciado = self._processar_imagens_inline(enunciado_escaped)
+            enunciado = self._processar_tabelas(enunciado)
+            fonte = questao_para_usar.get('fonte') or ''
+            ano = str(questao_para_usar.get('ano') or '')
+
+            # Cabeçalho da questão
+            if fonte and ano:
+                item = f"\\item \\textbf{{({fonte} - {ano})}} {enunciado}\n\n"
+            elif fonte:
+                item = f"\\item \\textbf{{({fonte})}} {enunciado}\n\n"
+            elif ano:
+                item = f"\\item \\textbf{{({ano})}} {enunciado}\n\n"
+            else:
+                item = f"\\item {enunciado}\n\n"
+
+            # Alternativas
+            alternativas = questao_para_usar.get('alternativas', [])
+            resposta_atual = questao_para_usar.get('resposta') or 'N/A'
+
+            # Se NÃO tem variantes, randomizar as alternativas para criar diferenciação
+            if alternativas and not tem_variantes and indice_versao > 0:
+                # Seed baseada na versão e índice da questão para consistência
+                seed_alternativas = (indice_versao * 1000) + i
+                alternativas, resposta_atual = self._randomizar_alternativas_com_gabarito(
+                    alternativas, resposta_atual, seed_alternativas
+                )
+                logger.info(f"Questão {i} sem variantes: alternativas randomizadas para TIPO {chr(65 + indice_versao)}")
+
+            # Armazenar resposta para o gabarito
+            respostas_gabarito[i] = resposta_atual
+
+            if alternativas:
+                item += "\\begin{enumerate}[label=\\Alph*)]\n"
+                for alt in alternativas:
+                    texto_alt_raw = alt.get('texto', '')
+                    texto_alt_com_tabelas = self._processar_tabelas_visuais(texto_alt_raw)
+                    texto_alt_com_listas = self._processar_listas(texto_alt_com_tabelas)
+                    texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_listas)
+                    texto_alt = self._processar_imagens_inline(texto_alt_escaped, centralizar=False)
+                    texto_alt = self._processar_tabelas(texto_alt)
+                    item += f"    \\item {texto_alt}\n"
+                item += "\\end{enumerate}\n"
+
+            item += "\\vspace{0.5cm}\n"
+            questoes_latex.append(item)
+
+        # Substituir placeholder de questões
+        questoes_block = "\n".join(questoes_latex)
+
+        if opcoes.layout_colunas == 2:
+            questoes_block = f"\\begin{{multicols}}{{2}}\n{questoes_block}\n\\end{{multicols}}"
+
+        template_content = template_content.replace("% [QUESTOES_AQUI]", questoes_block)
+
+        # 6. Gerar gabarito usando as respostas armazenadas (já ajustadas para alternativas randomizadas)
+        if opcoes.incluir_gabarito:
+            gabarito_latex = []
+            for i in range(1, len(questoes_randomizadas) + 1):
+                resposta = respostas_gabarito.get(i, 'N/A')
+                gabarito_latex.append(f"\\item Questão {i}: {escape_latex(str(resposta))}")
+
+            gabarito_block = "\n".join(gabarito_latex)
+            template_content = template_content.replace("% [GABARITO_AQUI]", gabarito_block)
+        else:
+            template_content = re.sub(
+                r'% ={10,}\s*\n% GABARITO \(opcional\)\s*\n% ={10,}\s*\n.*?\\end\{enumerate\}',
+                '',
+                template_content,
+                flags=re.DOTALL
+            )
+
+        # 7. Remover seção de resoluções
+        template_content = re.sub(
+            r'% ={10,}\s*\n% RESOLU[ÇC][ÕO]ES \(opcional\)\s*\n% ={10,}\s*\n.*?\\end\{enumerate\}',
+            '',
+            template_content,
+            flags=re.DOTALL
+        )
+
+        return template_content
+
+    def exportar_lista_randomizada(self, opcoes: ExportOptionsDTO, indice_versao: int) -> Path:
+        """
+        Exporta uma versão randomizada da lista.
+
+        Args:
+            opcoes: Opções de exportação com sufixo_versao definido
+            indice_versao: Índice da versão (0=A, 1=B, 2=C, 3=D)
+
+        Returns:
+            Caminho do arquivo gerado
+        """
+        logger.info(f"Exportando versão randomizada {opcoes.sufixo_versao} da lista {opcoes.id_lista}")
+
+        latex_content = self._gerar_conteudo_latex_randomizado(opcoes, indice_versao)
+
+        output_dir = Path(opcoes.output_dir)
+        lista_dados = services.lista.buscar_lista(opcoes.id_lista)
+
+        # Nome do arquivo: "Nome da Lista-TIPO A"
+        titulo_sanitizado = lista_dados['titulo'].replace(' ', '_')
+        sufixo_sanitizado = opcoes.sufixo_versao.replace(' ', '_')
+        base_filename = f"{titulo_sanitizado}-{sufixo_sanitizado}"
+
+        if opcoes.tipo_exportacao == 'direta':
+            pdf_path = self.export_service.compilar_latex_para_pdf(latex_content, output_dir, base_filename)
+            logger.info(f"PDF gerado: {pdf_path}")
+            return pdf_path
+        else:
+            tex_path = output_dir / f"{base_filename}.tex"
+            tex_path.write_text(latex_content, encoding='utf-8')
+            return tex_path

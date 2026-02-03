@@ -146,6 +146,5 @@ class ListaPage(QWidget):
         dialog = ExportDialog(id_lista=id_lista, parent=self)
         dialog.exec()
 
-
 # Alias para compatibilidade
 ListaPanel = ListaPage

@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QListWidget, QListWidgetItem, QCheckBox, QRadioButton,
     QButtonGroup, QScrollArea, QSizePolicy, QGridLayout, QMessageBox,
-    QComboBox, QFileDialog, QLineEdit, QPushButton
+    QComboBox, QFileDialog, QLineEdit, QPushButton, QSpinBox, QApplication
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QMimeData
 from PyQt6.QtGui import QDrag
@@ -474,6 +474,63 @@ class ExamListPage(QWidget):
         self.work_space_checkbox.setStyleSheet(checkbox_style)
         layout.addWidget(self.work_space_checkbox)
 
+        # Opção de Versões Randomizadas
+        randomize_label = QLabel("Versões Randomizadas:", scroll_content)
+        randomize_label.setStyleSheet(f"color: {Color.GRAY_TEXT}; margin-top: {Spacing.SM}px;")
+        layout.addWidget(randomize_label)
+
+        self.randomize_checkbox = QCheckBox("Gerar versões randomizadas", scroll_content)
+        self.randomize_checkbox.setStyleSheet(checkbox_style)
+        self.randomize_checkbox.stateChanged.connect(self._on_randomize_changed)
+        layout.addWidget(self.randomize_checkbox)
+
+        # Container para opções de randomização (inicialmente oculto)
+        self.randomize_options_frame = QFrame(scroll_content)
+        self.randomize_options_frame.setStyleSheet("QFrame { border: none; margin-left: 20px; }")
+        randomize_options_layout = QVBoxLayout(self.randomize_options_frame)
+        randomize_options_layout.setContentsMargins(0, 0, 0, 0)
+        randomize_options_layout.setSpacing(Spacing.XS)
+
+        # Quantidade de versões
+        qty_layout = QHBoxLayout()
+        qty_label = QLabel("Quantidade:", self.randomize_options_frame)
+        qty_label.setStyleSheet(f"color: {Color.GRAY_TEXT}; font-size: {Typography.FONT_SIZE_SM};")
+        qty_layout.addWidget(qty_label)
+
+        self.versoes_spinbox = QSpinBox(self.randomize_options_frame)
+        self.versoes_spinbox.setRange(1, 4)
+        self.versoes_spinbox.setValue(2)
+        self.versoes_spinbox.setFixedWidth(60)
+        self.versoes_spinbox.valueChanged.connect(self._update_tipos_preview)
+        self.versoes_spinbox.setStyleSheet(f"""
+            QSpinBox {{
+                padding: 4px;
+                border: 1px solid {Color.BORDER_LIGHT};
+                border-radius: {Dimensions.BORDER_RADIUS_SM};
+            }}
+        """)
+        qty_layout.addWidget(self.versoes_spinbox)
+        qty_layout.addStretch()
+        randomize_options_layout.addLayout(qty_layout)
+
+        # Preview dos tipos
+        self.tipos_preview_label = QLabel("Tipos: A, B", self.randomize_options_frame)
+        self.tipos_preview_label.setStyleSheet(f"""
+            color: {Color.PRIMARY_BLUE};
+            font-weight: {Typography.FONT_WEIGHT_BOLD};
+            font-size: {Typography.FONT_SIZE_SM};
+        """)
+        randomize_options_layout.addWidget(self.tipos_preview_label)
+
+        # Info sobre randomização
+        info_label = QLabel("Usa variantes das questões ou\nrandomiza alternativas.", self.randomize_options_frame)
+        info_label.setStyleSheet(f"color: {Color.GRAY_TEXT}; font-size: 10px;")
+        info_label.setWordWrap(True)
+        randomize_options_layout.addWidget(info_label)
+
+        self.randomize_options_frame.setVisible(False)
+        layout.addWidget(self.randomize_options_frame)
+
         layout.addStretch()
 
         scroll_area.setWidget(scroll_content)
@@ -555,6 +612,16 @@ class ExamListPage(QWidget):
             self.wallon_fields_frame.setVisible(True)
         else:
             self.wallon_fields_frame.setVisible(False)
+
+    def _on_randomize_changed(self, state):
+        """Handle randomize checkbox state change."""
+        is_checked = state == Qt.CheckState.Checked.value
+        self.randomize_options_frame.setVisible(is_checked)
+
+    def _update_tipos_preview(self, quantidade: int):
+        """Update the preview of version types."""
+        tipos = ['A', 'B', 'C', 'D'][:quantidade]
+        self.tipos_preview_label.setText(f"Tipos: {', '.join(tipos)}")
 
     def _load_data(self):
         """Load data from database."""
@@ -878,6 +945,11 @@ class ExamListPage(QWidget):
         if not output_dir:
             return
 
+        # Verificar se é exportação randomizada
+        if self.randomize_checkbox.isChecked():
+            self._perform_randomized_export(output_dir, template, 'direta')
+            return
+
         try:
             from src.application.dtos.export_dto import ExportOptionsDTO
 
@@ -898,10 +970,16 @@ class ExamListPage(QWidget):
             export_controller = criar_export_controller()
             pdf_path = export_controller.exportar_lista(opcoes)
 
-            QMessageBox.information(
-                self, "Sucesso",
-                f"PDF gerado com sucesso!\n\n{pdf_path}"
+            # Perguntar se deseja abrir o arquivo
+            reply = QMessageBox.question(
+                self, "PDF Gerado",
+                f"PDF gerado com sucesso!\n\n{pdf_path}\n\nDeseja abrir o arquivo?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes
             )
+
+            if reply == QMessageBox.StandardButton.Yes:
+                export_controller.abrir_arquivo(pdf_path)
 
         except Exception as e:
             QMessageBox.critical(
@@ -955,6 +1033,11 @@ class ExamListPage(QWidget):
         if not output_dir:
             return
 
+        # Verificar se é exportação randomizada
+        if self.randomize_checkbox.isChecked():
+            self._perform_randomized_export(output_dir, template, 'manual')
+            return
+
         try:
             from src.application.dtos.export_dto import ExportOptionsDTO
 
@@ -985,6 +1068,77 @@ class ExamListPage(QWidget):
                 self, "Erro",
                 f"Erro ao exportar LaTeX: {str(e)}"
             )
+
+    def _perform_randomized_export(self, output_dir: str, template: str, tipo_exportacao: str):
+        """Perform randomized export generating multiple versions."""
+        from src.application.dtos.export_dto import ExportOptionsDTO
+
+        tipos = ['A', 'B', 'C', 'D']
+        quantidade = self.versoes_spinbox.value()
+        arquivos_gerados = []
+
+        try:
+            # Mostrar cursor de espera
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.processEvents()
+
+            export_controller = criar_export_controller()
+
+            for i in range(quantidade):
+                tipo = tipos[i]
+
+                opcoes = ExportOptionsDTO(
+                    id_lista=self.current_exam_codigo,
+                    template_latex=template,
+                    tipo_exportacao=tipo_exportacao,
+                    output_dir=output_dir,
+                    layout_colunas=1 if self.single_column_radio.isChecked() else 2,
+                    incluir_gabarito=self.answer_key_checkbox.isChecked(),
+                    # Campos do template Wallon
+                    disciplina=self.disciplina_input.text().strip() or None,
+                    professor=self.professor_input.text().strip() or None,
+                    trimestre=self.trimestre_input.text().strip() or None,
+                    ano=self.ano_input.text().strip() or None,
+                    # Campos de randomização
+                    gerar_versoes_randomizadas=True,
+                    quantidade_versoes=quantidade,
+                    sufixo_versao=f"TIPO {tipo}"
+                )
+
+                result_path = export_controller.exportar_lista_randomizada(opcoes, indice_versao=i)
+                if result_path:
+                    arquivos_gerados.append(result_path)
+
+                QApplication.processEvents()
+
+            QApplication.restoreOverrideCursor()
+
+            if arquivos_gerados:
+                extensao = "PDF" if tipo_exportacao == 'direta' else "LaTeX"
+                msg = f"Versões {extensao} geradas com sucesso!\n\nArquivos criados em:\n{output_dir}\n\n"
+                msg += "Arquivos:\n" + "\n".join([f"• {p.name}" for p in arquivos_gerados])
+
+                # Se for PDF, perguntar se deseja abrir os arquivos
+                if tipo_exportacao == 'direta':
+                    msg += "\n\nDeseja abrir os arquivos?"
+                    reply = QMessageBox.question(
+                        self, "Sucesso",
+                        msg,
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.Yes
+                    )
+
+                    if reply == QMessageBox.StandardButton.Yes:
+                        for pdf_path in arquivos_gerados:
+                            export_controller.abrir_arquivo(pdf_path)
+                else:
+                    QMessageBox.information(self, "Sucesso", msg)
+            else:
+                QMessageBox.warning(self, "Erro", "Nenhum arquivo foi gerado.")
+
+        except Exception as e:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.critical(self, "Erro", f"Erro ao gerar versões randomizadas: {str(e)}")
 
     def _get_export_config(self) -> Dict:
         """Get current export configuration."""

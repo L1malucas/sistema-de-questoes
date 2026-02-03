@@ -1,8 +1,8 @@
 """
 DTOs para Export - Compatibilidade com views
 """
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List
 
 
 @dataclass
@@ -23,3 +23,7 @@ class ExportOptionsDTO:
     professor: Optional[str] = None
     disciplina: Optional[str] = None
     ano: Optional[str] = None
+    # Campos para exportação randomizada (múltiplas versões)
+    gerar_versoes_randomizadas: bool = False
+    quantidade_versoes: int = 1  # 1-4 versões (TIPO A, B, C, D)
+    sufixo_versao: Optional[str] = None  # Ex: "TIPO A", "TIPO B"

@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QCheckBox, QRadioButton, QButtonGroup, QSpinBox, QSlider,
     QComboBox, QGroupBox, QFileDialog, QMessageBox, QLineEdit,
-    QSizePolicy
+    QSizePolicy, QProgressBar, QApplication
 )
 from PyQt6.QtCore import Qt
 import logging
@@ -18,6 +18,9 @@ from src.controllers.adapters import criar_export_controller
 from src.application.dtos.export_dto import ExportOptionsDTO
 
 logger = logging.getLogger(__name__)
+
+# Tipos de versão disponíveis
+TIPOS_VERSAO = ['A', 'B', 'C', 'D']
 
 
 class ExportDialog(QDialog):
@@ -55,9 +58,52 @@ class ExportDialog(QDialog):
         content_layout.addWidget(self.gabarito_check)
         self.resolucao_check = QCheckBox("Incluir Resoluções")
         content_layout.addWidget(self.resolucao_check)
-        self.randomizar_check = QCheckBox("Randomizar ordem das questões")
-        content_layout.addWidget(self.randomizar_check)
         layout.addWidget(content_group)
+
+        # Seção de Versões Randomizadas
+        random_group = QGroupBox("Versões Randomizadas")
+        random_layout = QVBoxLayout(random_group)
+
+        # Explicação
+        info_label = QLabel(
+            "Gera múltiplas versões da lista usando variantes das questões.\n"
+            "Questões sem variantes terão alternativas randomizadas."
+        )
+        info_label.setStyleSheet("color: #666; font-size: 10px;")
+        info_label.setWordWrap(True)
+        random_layout.addWidget(info_label)
+
+        # Checkbox para ativar
+        self.randomizar_check = QCheckBox("Gerar versões randomizadas")
+        self.randomizar_check.stateChanged.connect(self._on_randomizar_changed)
+        random_layout.addWidget(self.randomizar_check)
+
+        # Container para quantidade (inicialmente oculto)
+        self.random_options_widget = QGroupBox()
+        self.random_options_widget.setStyleSheet("QGroupBox { border: none; }")
+        random_options_layout = QVBoxLayout(self.random_options_widget)
+        random_options_layout.setContentsMargins(20, 0, 0, 0)
+
+        # Quantidade de versões
+        qty_layout = QHBoxLayout()
+        qty_layout.addWidget(QLabel("Quantidade de versões:"))
+        self.versoes_spin = QSpinBox()
+        self.versoes_spin.setRange(1, 4)
+        self.versoes_spin.setValue(2)
+        self.versoes_spin.valueChanged.connect(self._atualizar_preview_tipos)
+        qty_layout.addWidget(self.versoes_spin)
+        qty_layout.addStretch()
+        random_options_layout.addLayout(qty_layout)
+
+        # Preview dos tipos
+        self.tipos_label = QLabel("Tipos a gerar: TIPO A, TIPO B")
+        self.tipos_label.setStyleSheet("color: #2196F3; font-weight: bold; font-size: 11px;")
+        random_options_layout.addWidget(self.tipos_label)
+
+        self.random_options_widget.setVisible(False)
+        random_layout.addWidget(self.random_options_widget)
+
+        layout.addWidget(random_group)
 
         layout_group = QGroupBox("Layout")
         layout_layout = QVBoxLayout(layout_group)
@@ -197,6 +243,17 @@ class ExportDialog(QDialog):
         self.wallon_group.setVisible(is_wallon)
         self.adjustSize()
 
+    def _on_randomizar_changed(self, state):
+        """Mostra/oculta opções de randomização."""
+        is_checked = state == Qt.CheckState.Checked.value
+        self.random_options_widget.setVisible(is_checked)
+        self.adjustSize()
+
+    def _atualizar_preview_tipos(self, quantidade: int):
+        """Atualiza o preview dos tipos de versão."""
+        tipos = [f"TIPO {t}" for t in TIPOS_VERSAO[:quantidade]]
+        self.tipos_label.setText(f"Tipos a gerar: {', '.join(tipos)}")
+
     def perform_preview(self):
         """Gera um PDF temporário para preview antes da exportação final."""
         import tempfile
@@ -283,12 +340,18 @@ class ExportDialog(QDialog):
                 return
             output_dir = Path(output_dir_str)
 
+            # Verificar se é exportação randomizada
+            if self.randomizar_check.isChecked():
+                self._perform_randomized_export(output_dir)
+                return
+
+            # Exportação normal
             opcoes = ExportOptionsDTO(
                 id_lista=self.id_lista,
                 layout_colunas=self.colunas_spin.value(),
                 incluir_gabarito=self.gabarito_check.isChecked(),
                 incluir_resolucoes=self.resolucao_check.isChecked(),
-                randomizar_questoes=self.randomizar_check.isChecked(),
+                randomizar_questoes=False,
                 escala_imagens=self.escala_slider.value() / 100.0,
                 template_latex=self.template_combo.currentText(),
                 tipo_exportacao="direta" if self.direct_radio.isChecked() else "manual",
@@ -324,6 +387,58 @@ class ExportDialog(QDialog):
             ErrorHandler.show_error(self, "Erro de Compilação", str(re) + "\nVerifique o log para detalhes.")
         except Exception as e:
             ErrorHandler.handle_exception(self, e, "Erro inesperado durante a exportação.")
+
+    def _perform_randomized_export(self, output_dir: Path):
+        """Executa a exportação de múltiplas versões randomizadas."""
+        try:
+            quantidade = self.versoes_spin.value()
+            arquivos_gerados = []
+
+            # Mostrar cursor de espera
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+
+            for i in range(quantidade):
+                tipo = TIPOS_VERSAO[i]
+                logger.info(f"Gerando versão TIPO {tipo}...")
+
+                opcoes = ExportOptionsDTO(
+                    id_lista=self.id_lista,
+                    layout_colunas=self.colunas_spin.value(),
+                    incluir_gabarito=self.gabarito_check.isChecked(),
+                    incluir_resolucoes=self.resolucao_check.isChecked(),
+                    randomizar_questoes=False,
+                    escala_imagens=self.escala_slider.value() / 100.0,
+                    template_latex=self.template_combo.currentText(),
+                    tipo_exportacao="direta" if self.direct_radio.isChecked() else "manual",
+                    output_dir=str(output_dir),
+                    trimestre=self.trimestre_combo.currentText() if self.wallon_group.isVisible() else None,
+                    professor=self.professor_input.text() if self.wallon_group.isVisible() else None,
+                    disciplina=self.disciplina_input.text() if self.wallon_group.isVisible() else None,
+                    ano=self.ano_input.text() if self.wallon_group.isVisible() else None,
+                    gerar_versoes_randomizadas=True,
+                    quantidade_versoes=quantidade,
+                    sufixo_versao=f"TIPO {tipo}"
+                )
+
+                result_path = self.controller.exportar_lista_randomizada(opcoes, indice_versao=i)
+                if result_path:
+                    arquivos_gerados.append(result_path)
+
+                QApplication.processEvents()
+
+            QApplication.restoreOverrideCursor()
+
+            if arquivos_gerados:
+                msg = f"Versões geradas com sucesso!\n\nArquivos criados em:\n{output_dir}\n\n"
+                msg += "Arquivos:\n" + "\n".join([f"- {p.name}" for p in arquivos_gerados])
+                ErrorHandler.show_success(self, "Sucesso", msg)
+                self.accept()
+            else:
+                ErrorHandler.show_error(self, "Erro", "Nenhum arquivo foi gerado.")
+
+        except Exception as e:
+            QApplication.restoreOverrideCursor()
+            ErrorHandler.handle_exception(self, e, "Erro ao gerar versões randomizadas.")
 
 
 logger.info("ExportDialog carregado")
