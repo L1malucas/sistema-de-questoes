@@ -6,6 +6,9 @@ import subprocess
 import locale
 import re
 import shutil
+import urllib.request
+import urllib.error
+import hashlib
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -126,6 +129,114 @@ class ExportService:
     def __init__(self):
         pass
 
+    def _baixar_imagem_remota(self, url: str, destino: Path) -> bool:
+        """
+        Baixa uma imagem de uma URL remota para o diretório de destino.
+
+        Args:
+            url: URL da imagem (ex: https://i.ibb.co/xxx/imagem.png)
+            destino: Caminho completo de destino para a imagem
+
+        Returns:
+            True se o download foi bem-sucedido, False caso contrário
+        """
+        try:
+            logger.info(f"Baixando imagem remota: {url}")
+            # Configurar headers para evitar bloqueio
+            request = urllib.request.Request(
+                url,
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Sistema de Questões'}
+            )
+
+            with urllib.request.urlopen(request, timeout=30) as response:
+                with open(destino, 'wb') as f:
+                    f.write(response.read())
+
+            logger.info(f"Imagem baixada com sucesso: {destino.name}")
+            return True
+
+        except urllib.error.URLError as e:
+            logger.error(f"Erro de URL ao baixar {url}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Erro ao baixar imagem {url}: {e}")
+            return False
+
+    def _processar_imagens_remotas_no_latex(self, latex_content: str, temp_dir: Path) -> str:
+        """
+        Processa o conteúdo LaTeX, identifica URLs de imagens remotas,
+        baixa para o diretório temporário e substitui as URLs pelos nomes locais.
+
+        Args:
+            latex_content: Conteúdo LaTeX com possíveis URLs de imagens
+            temp_dir: Diretório temporário onde baixar as imagens
+
+        Returns:
+            Conteúdo LaTeX com URLs substituídas por nomes de arquivos locais
+        """
+        # Padrão para encontrar includegraphics com URLs remotas
+        # Formato: \includegraphics[options]{http://...} ou \includegraphics[options]{https://...}
+        pattern = r'\\includegraphics(\[[^\]]*\])?\{(https?://[^}]+)\}'
+
+        def substituir_url(match):
+            opcoes = match.group(1) or ''
+            url = match.group(2)
+
+            # Extrair nome do arquivo da URL ou gerar um baseado em hash
+            url_path = url.split('/')[-1].split('?')[0]  # Remove query params
+            if not url_path or len(url_path) < 3:
+                # Gerar nome baseado em hash da URL
+                url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
+                url_path = f"img_{url_hash}.png"
+
+            # Garantir extensão válida
+            if not any(url_path.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.pdf']):
+                url_path += '.png'
+
+            destino = temp_dir / url_path
+
+            # Baixar a imagem se ainda não existe
+            if not destino.exists():
+                sucesso = self._baixar_imagem_remota(url, destino)
+                if not sucesso:
+                    logger.warning(f"Falha ao baixar {url}, mantendo URL original")
+                    return match.group(0)  # Manter original se falhar
+
+            # Retornar includegraphics com caminho local
+            return f'\\includegraphics{opcoes}{{{url_path}}}'
+
+        # Substituir todas as URLs por nomes locais
+        novo_conteudo = re.sub(pattern, substituir_url, latex_content)
+
+        return novo_conteudo
+
+    def _copiar_imagens_para_temp(self, temp_dir: Path):
+        """
+        Copia as imagens necessárias para o diretório temporário.
+        Isso garante que o pdflatex encontre as imagens durante a compilação.
+        """
+        import os
+
+        # Diretórios de imagens do projeto
+        diretorios_imagens = [
+            Path('imagens/logos'),
+            Path('imagens/questoes'),
+            Path('imagens/alternativas'),
+            Path('imagens')
+        ]
+
+        for dir_img in diretorios_imagens:
+            if dir_img.exists():
+                for img_file in dir_img.glob('*'):
+                    if img_file.is_file() and img_file.suffix.lower() in ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.eps']:
+                        destino = temp_dir / img_file.name
+                        if not destino.exists():
+                            try:
+                                shutil.copy2(img_file, destino)
+                                logger.debug(f"Imagem copiada: {img_file.name}")
+                            except Exception as e:
+                                logger.warning(f"Erro ao copiar imagem {img_file}: {e}")
+
     def compilar_latex_para_pdf(self, latex_content: str, output_dir: Path, base_filename: str) -> Path:
         """
         Compila um conteúdo LaTeX para PDF.
@@ -137,16 +248,24 @@ class ExportService:
 
         Returns:
             O caminho para o arquivo PDF gerado.
-        
+
         Raises:
             RuntimeError: Se a compilação do LaTeX falhar.
         """
         temp_dir = output_dir / f"temp_latex_{base_filename}"
         temp_dir.mkdir(parents=True, exist_ok=True)
-        
+
         latex_file_path = temp_dir / f"{base_filename}.tex"
-        
+
         try:
+            # Copiar imagens locais para o diretório temporário
+            logger.info("Copiando imagens locais para diretório temporário...")
+            self._copiar_imagens_para_temp(temp_dir)
+
+            # Processar e baixar imagens remotas (ImgBB, etc)
+            logger.info("Processando imagens remotas no LaTeX...")
+            latex_content = self._processar_imagens_remotas_no_latex(latex_content, temp_dir)
+
             logger.info(f"Escrevendo conteúdo LaTeX para: {latex_file_path}")
             with open(latex_file_path, "w", encoding="utf-8") as f:
                 f.write(latex_content)

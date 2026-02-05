@@ -152,8 +152,10 @@ class ExportDialog(QDialog):
         label_width = 80
         field_height = 30
 
-        # Trimestre
-        trimestre_layout = QHBoxLayout()
+        # Trimestre (para wallon_av2)
+        self.trimestre_layout_widget = QWidget()
+        trimestre_layout = QHBoxLayout(self.trimestre_layout_widget)
+        trimestre_layout.setContentsMargins(0, 0, 0, 0)
         lbl_trimestre = QLabel("Trimestre:")
         lbl_trimestre.setFixedSize(label_width, field_height)
         trimestre_layout.addWidget(lbl_trimestre)
@@ -163,7 +165,22 @@ class ExportDialog(QDialog):
         self.trimestre_combo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         trimestre_layout.addWidget(self.trimestre_combo)
         trimestre_layout.addStretch()
-        wallon_layout.addLayout(trimestre_layout)
+        wallon_layout.addWidget(self.trimestre_layout_widget)
+
+        # Unidade (para listaWallon)
+        self.unidade_layout_widget = QWidget()
+        unidade_layout = QHBoxLayout(self.unidade_layout_widget)
+        unidade_layout.setContentsMargins(0, 0, 0, 0)
+        lbl_unidade = QLabel("Unidade:")
+        lbl_unidade.setFixedSize(label_width, field_height)
+        unidade_layout.addWidget(lbl_unidade)
+        self.unidade_combo = QComboBox()
+        self.unidade_combo.addItems(["I", "II", "III"])
+        self.unidade_combo.setFixedSize(100, field_height)
+        self.unidade_combo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        unidade_layout.addWidget(self.unidade_combo)
+        unidade_layout.addStretch()
+        wallon_layout.addWidget(self.unidade_layout_widget)
 
         # Professor
         prof_layout = QHBoxLayout()
@@ -240,7 +257,17 @@ class ExportDialog(QDialog):
     def _on_template_changed(self, template_name: str):
         """Mostra/oculta campos específicos do template selecionado."""
         is_wallon = "wallon" in template_name.lower()
+        is_lista_wallon = "listawallon" in template_name.lower()
+        is_wallon_av2 = "wallon_av2" in template_name.lower()
+
         self.wallon_group.setVisible(is_wallon)
+
+        # Mostrar campos específicos baseado no template
+        if is_wallon:
+            # listaWallon usa Unidade, wallon_av2 usa Trimestre
+            self.trimestre_layout_widget.setVisible(is_wallon_av2)
+            self.unidade_layout_widget.setVisible(is_lista_wallon)
+
         self.adjustSize()
 
     def _on_randomizar_changed(self, state):
@@ -291,10 +318,11 @@ class ExportDialog(QDialog):
                     template_latex=template_selecionado,
                     tipo_exportacao="direta",
                     output_dir=str(temp_dir),
-                    trimestre=self.trimestre_combo.currentText() if self.wallon_group.isVisible() else None,
+                    trimestre=self.trimestre_combo.currentText() if self.wallon_group.isVisible() and self.trimestre_layout_widget.isVisible() else None,
                     professor=self.professor_input.text() if self.wallon_group.isVisible() else None,
                     disciplina=self.disciplina_input.text() if self.wallon_group.isVisible() else None,
-                    ano=self.ano_input.text() if self.wallon_group.isVisible() else None
+                    ano=self.ano_input.text() if self.wallon_group.isVisible() else None,
+                    unidade=self.unidade_combo.currentText() if self.wallon_group.isVisible() and self.unidade_layout_widget.isVisible() else None
                 )
 
                 logger.info(f"Opções de exportação: {opcoes}")
@@ -356,10 +384,11 @@ class ExportDialog(QDialog):
                 template_latex=self.template_combo.currentText(),
                 tipo_exportacao="direta" if self.direct_radio.isChecked() else "manual",
                 output_dir=str(output_dir),
-                trimestre=self.trimestre_combo.currentText() if self.wallon_group.isVisible() else None,
+                trimestre=self.trimestre_combo.currentText() if self.wallon_group.isVisible() and self.trimestre_layout_widget.isVisible() else None,
                 professor=self.professor_input.text() if self.wallon_group.isVisible() else None,
                 disciplina=self.disciplina_input.text() if self.wallon_group.isVisible() else None,
-                ano=self.ano_input.text() if self.wallon_group.isVisible() else None
+                ano=self.ano_input.text() if self.wallon_group.isVisible() else None,
+                unidade=self.unidade_combo.currentText() if self.wallon_group.isVisible() and self.unidade_layout_widget.isVisible() else None
             )
 
             result_path = self.controller.exportar_lista(opcoes)
@@ -411,10 +440,11 @@ class ExportDialog(QDialog):
                     template_latex=self.template_combo.currentText(),
                     tipo_exportacao="direta" if self.direct_radio.isChecked() else "manual",
                     output_dir=str(output_dir),
-                    trimestre=self.trimestre_combo.currentText() if self.wallon_group.isVisible() else None,
+                    trimestre=self.trimestre_combo.currentText() if self.wallon_group.isVisible() and self.trimestre_layout_widget.isVisible() else None,
                     professor=self.professor_input.text() if self.wallon_group.isVisible() else None,
                     disciplina=self.disciplina_input.text() if self.wallon_group.isVisible() else None,
                     ano=self.ano_input.text() if self.wallon_group.isVisible() else None,
+                    unidade=self.unidade_combo.currentText() if self.wallon_group.isVisible() and self.unidade_layout_widget.isVisible() else None,
                     gerar_versoes_randomizadas=True,
                     quantidade_versoes=quantidade,
                     sufixo_versao=f"TIPO {tipo}"

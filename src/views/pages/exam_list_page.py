@@ -396,12 +396,34 @@ class ExamListPage(QWidget):
         self.professor_input.setFixedHeight(28)
         wallon_layout.addWidget(self.professor_input)
 
-        # Campo Trimestre
-        self.trimestre_input = QLineEdit(self.wallon_fields_frame)
-        self.trimestre_input.setPlaceholderText("Trimestre (ex: 1º, 2º, 3º)")
-        self.trimestre_input.setStyleSheet(self._get_input_style())
-        self.trimestre_input.setFixedHeight(28)
-        wallon_layout.addWidget(self.trimestre_input)
+        # Campo Trimestre (para wallon_av2)
+        self.trimestre_label = QLabel("Trimestre:", self.wallon_fields_frame)
+        self.trimestre_label.setStyleSheet(f"color: {Color.GRAY_TEXT}; font-size: 11px;")
+        wallon_layout.addWidget(self.trimestre_label)
+
+        self.trimestre_combo = QComboBox(self.wallon_fields_frame)
+        self.trimestre_combo.addItem("Selecione o Trimestre", "")
+        self.trimestre_combo.addItem("I", "I")
+        self.trimestre_combo.addItem("II", "II")
+        self.trimestre_combo.addItem("III", "III")
+        self.trimestre_combo.addItem("IV", "IV")
+        self.trimestre_combo.setStyleSheet(self._get_combo_style())
+        self.trimestre_combo.setFixedHeight(28)
+        wallon_layout.addWidget(self.trimestre_combo)
+
+        # Campo Unidade (para listaWallon)
+        self.wallon_unidade_label = QLabel("Unidade:", self.wallon_fields_frame)
+        self.wallon_unidade_label.setStyleSheet(f"color: {Color.GRAY_TEXT}; font-size: 11px;")
+        wallon_layout.addWidget(self.wallon_unidade_label)
+
+        self.wallon_unidade_combo = QComboBox(self.wallon_fields_frame)
+        self.wallon_unidade_combo.addItem("Selecione a Unidade", "")
+        self.wallon_unidade_combo.addItem("I", "I")
+        self.wallon_unidade_combo.addItem("II", "II")
+        self.wallon_unidade_combo.addItem("III", "III")
+        self.wallon_unidade_combo.setStyleSheet(self._get_combo_style())
+        self.wallon_unidade_combo.setFixedHeight(28)
+        wallon_layout.addWidget(self.wallon_unidade_combo)
 
         # Campo Ano
         self.ano_input = QLineEdit(self.wallon_fields_frame)
@@ -726,6 +748,14 @@ class ExamListPage(QWidget):
         if template:
             if 'wallon' in template.lower():
                 self.wallon_fields_frame.setVisible(True)
+                # Diferenciar entre listaWallon (usa Unidade) e wallon_av2 (usa Trimestre)
+                is_lista_wallon = 'listawallon' in template.lower()
+                is_wallon_av2 = 'wallon_av2' in template.lower()
+                # Mostrar/ocultar campos específicos
+                self.trimestre_label.setVisible(is_wallon_av2)
+                self.trimestre_combo.setVisible(is_wallon_av2)
+                self.wallon_unidade_label.setVisible(is_lista_wallon)
+                self.wallon_unidade_combo.setVisible(is_lista_wallon)
             elif 'ceab' in template.lower() or 'simulado' in template.lower():
                 self.ceab_fields_frame.setVisible(True)
                 # Template CEAB já tem duas colunas, ocultar opção e definir para 1 coluna
@@ -1090,12 +1120,13 @@ class ExamListPage(QWidget):
                 # Campos do template Wallon
                 disciplina=self.disciplina_input.text().strip() or None,
                 professor=self.professor_input.text().strip() or None,
-                trimestre=self.trimestre_input.text().strip() or None,
+                trimestre=self.trimestre_combo.currentData() or None,
                 ano=self.ano_input.text().strip() or None,
                 # Campos do template CEAB
                 data_aplicacao=self.data_aplicacao_input.text().strip() or None,
                 serie_simulado=self.serie_simulado_input.text().strip() or None,
-                unidade=self.unidade_combo.currentData() or None,
+                # Unidade: usar campo do Wallon para listaWallon, ou campo CEAB para simuladoCeab
+                unidade=self.wallon_unidade_combo.currentData() or self.unidade_combo.currentData() or None,
                 tipo_simulado=self.tipo_simulado_combo.currentData() or None
             )
 
@@ -1121,13 +1152,21 @@ class ExamListPage(QWidget):
 
     def _validate_wallon_fields(self) -> bool:
         """Validate Wallon template fields."""
+        template = self.template_combo.currentData() or ""
+        is_lista_wallon = 'listawallon' in template.lower()
+        is_wallon_av2 = 'wallon_av2' in template.lower()
+
         missing = []
         if not self.disciplina_input.text().strip():
             missing.append("Disciplina")
         if not self.professor_input.text().strip():
             missing.append("Professor")
-        if not self.trimestre_input.text().strip():
+        # Validar Trimestre para wallon_av2
+        if is_wallon_av2 and not self.trimestre_combo.currentData():
             missing.append("Trimestre")
+        # Validar Unidade para listaWallon
+        if is_lista_wallon and not self.wallon_unidade_combo.currentData():
+            missing.append("Unidade")
         if not self.ano_input.text().strip():
             missing.append("Ano")
 
@@ -1208,12 +1247,13 @@ class ExamListPage(QWidget):
                 # Campos do template Wallon
                 disciplina=self.disciplina_input.text().strip() or None,
                 professor=self.professor_input.text().strip() or None,
-                trimestre=self.trimestre_input.text().strip() or None,
+                trimestre=self.trimestre_combo.currentData() or None,
                 ano=self.ano_input.text().strip() or None,
                 # Campos do template CEAB
                 data_aplicacao=self.data_aplicacao_input.text().strip() or None,
                 serie_simulado=self.serie_simulado_input.text().strip() or None,
-                unidade=self.unidade_combo.currentData() or None,
+                # Unidade: usar campo do Wallon para listaWallon, ou campo CEAB para simuladoCeab
+                unidade=self.wallon_unidade_combo.currentData() or self.unidade_combo.currentData() or None,
                 tipo_simulado=self.tipo_simulado_combo.currentData() or None
             )
 
@@ -1264,12 +1304,13 @@ class ExamListPage(QWidget):
                     # Campos do template Wallon
                     disciplina=self.disciplina_input.text().strip() or None,
                     professor=self.professor_input.text().strip() or None,
-                    trimestre=self.trimestre_input.text().strip() or None,
+                    trimestre=self.trimestre_combo.currentData() or None,
                     ano=self.ano_input.text().strip() or None,
                     # Campos do template CEAB
                     data_aplicacao=self.data_aplicacao_input.text().strip() or None,
                     serie_simulado=self.serie_simulado_input.text().strip() or None,
-                    unidade=self.unidade_combo.currentData() or None,
+                    # Unidade: usar campo do Wallon para listaWallon, ou campo CEAB para simuladoCeab
+                    unidade=self.wallon_unidade_combo.currentData() or self.unidade_combo.currentData() or None,
                     tipo_simulado=self.tipo_simulado_combo.currentData() or None,
                     # Campos de randomização
                     gerar_versoes_randomizadas=True,
