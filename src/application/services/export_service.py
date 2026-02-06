@@ -65,7 +65,11 @@ def escape_latex(text: str) -> str:
     for char, replacement in replacements:
         text = text.replace(char, replacement)
 
-    # 6.1 Substituir caracteres Unicode problemáticos
+    # 6.1 Escapar $ apenas quando seguido de espaço ou dígito (provavelmente moeda)
+    # IMPORTANTE: Fazer ANTES das substituições Unicode que criam blocos $...$
+    text = re.sub(r'\$(?=\s|\d)', r'\\$', text)
+
+    # 6.2 Substituir caracteres Unicode problemáticos
     # Esses caracteres não são suportados pelo pdflatex por padrão
     unicode_replacements = [
         ('✓', ''),      # Checkmark - remover (redundante com gabarito)
@@ -114,9 +118,6 @@ def escape_latex(text: str) -> str:
 
     for char, replacement in unicode_replacements:
         text = text.replace(char, replacement)
-
-    # 7. Escapar $ apenas quando seguido de espaço ou dígito (provavelmente moeda)
-    text = re.sub(r'\$(?=\s|\d)', r'\\$', text)
 
     # 8. Restaurar todos os blocos preservados
     for key, value in preserved_blocks.items():

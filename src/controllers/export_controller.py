@@ -51,6 +51,27 @@ class ExportController:
 
         return re.sub(pattern, replace_image, texto)
 
+    def _processar_formatacoes_html(self, texto: str) -> str:
+        """
+        Converte tags HTML de formatação para comandos LaTeX equivalentes.
+
+        Deve ser chamado ANTES de _escape_preservando_comandos no pipeline.
+
+        Conversões:
+        - <b>texto</b> -> \\textbf{texto}
+        - <i>texto</i> -> \\textit{texto}
+        - <u>texto</u> -> \\underline{texto}
+        - <sup>texto</sup> -> \\textsuperscript{texto}
+        - <sub>texto</sub> -> \\textsubscript{texto}
+        """
+        # Processar de dentro para fora (tags mais internas primeiro)
+        texto = re.sub(r'<sup>(.*?)</sup>', r'\\textsuperscript{\1}', texto)
+        texto = re.sub(r'<sub>(.*?)</sub>', r'\\textsubscript{\1}', texto)
+        texto = re.sub(r'<b>(.*?)</b>', r'\\textbf{\1}', texto)
+        texto = re.sub(r'<i>(.*?)</i>', r'\\textit{\1}', texto)
+        texto = re.sub(r'<u>(.*?)</u>', r'\\underline{\1}', texto)
+        return texto
+
     def _escape_preservando_comandos(self, texto: str) -> str:
         """
         Escapa caracteres especiais do LaTeX, mas preserva comandos LaTeX já gerados.
@@ -63,7 +84,7 @@ class ExportController:
         Returns:
             Texto com caracteres escapados, mas comandos LaTeX preservados
         """
-        # Padrões de comandos LaTeX a preservar (listas e tabelas)
+        # Padrões de comandos LaTeX a preservar (listas, tabelas e alinhamento)
         patterns = [
             # Comandos de lista
             r'\\begin\{itemize\}',
@@ -76,8 +97,20 @@ class ExportController:
             r'\\end\{tabular\}',
             r'\\hline',
             r'\\textbf\{[^}]*\}',
+            r'\\textit\{[^}]*\}',
+            r'\\underline\{[^}]*\}',
+            r'\\textsuperscript\{[^}]*\}',
+            r'\\textsubscript\{[^}]*\}',
             r'\s*&\s*',  # Separador de células
             r'\s*\\\\\s*',  # Quebra de linha em tabela
+            # Comandos de alinhamento
+            r'\\begin\{center\}',
+            r'\\end\{center\}',
+            r'\\begin\{flushright\}',
+            r'\\end\{flushright\}',
+            r'\\footnotesize\s',
+            # Blocos de modo matemático ($...$) - preservar inteiro
+            r'\$[^$]+\$',
         ]
 
         # Salvar comandos com placeholders
@@ -249,6 +282,29 @@ class ExportController:
             return '\n'.join(latex_lines)
 
         return table_pattern.sub(convert_table, texto)
+
+    def _processar_blocos_alinhamento(self, texto: str) -> str:
+        """
+        Processa blocos [CENTRO] e [FONTE] e converte para LaTeX.
+
+        [CENTRO]texto[/CENTRO] -> \\begin{center}texto\\end{center}
+        [FONTE]texto[/FONTE] -> \\begin{flushright}\\footnotesize texto\\end{flushright}
+        """
+        # [CENTRO]texto[/CENTRO]
+        texto = re.sub(
+            r'\[CENTRO\](.*?)\[/CENTRO\]',
+            r'\\begin{center}\1\\end{center}',
+            texto,
+            flags=re.DOTALL
+        )
+        # [FONTE]texto[/FONTE]
+        texto = re.sub(
+            r'\[FONTE\](.*?)\[/FONTE\]',
+            r'\\begin{flushright}\\footnotesize \1\\end{flushright}',
+            texto,
+            flags=re.DOTALL
+        )
+        return texto
 
     def _processar_listas(self, texto: str) -> str:
         """
@@ -509,8 +565,12 @@ class ExportController:
             enunciado_com_tabelas = self._processar_tabelas_visuais(enunciado_raw)
             # Processar listas (converte símbolos visuais para LaTeX)
             enunciado_com_listas = self._processar_listas(enunciado_com_tabelas)
+            # Processar blocos de alinhamento (converte [CENTRO] e [FONTE] para LaTeX)
+            enunciado_com_alinhamento = self._processar_blocos_alinhamento(enunciado_com_listas)
+            # Converter tags HTML para comandos LaTeX
+            enunciado_com_formatacao = self._processar_formatacoes_html(enunciado_com_alinhamento)
             # Escapar apenas o texto que não é comando LaTeX
-            enunciado_escaped = self._escape_preservando_comandos(enunciado_com_listas)
+            enunciado_escaped = self._escape_preservando_comandos(enunciado_com_formatacao)
             enunciado = self._processar_imagens_inline(enunciado_escaped)
             enunciado = self._processar_tabelas(enunciado)
             fonte = questao.get('fonte') or ''
@@ -532,10 +592,12 @@ class ExportController:
                 item += "\\begin{enumerate}[label=\\Alph*)]\n"
                 for alt in alternativas:
                     texto_alt_raw = alt.get('texto', '')
-                    # Processar tabelas e listas nas alternativas também
+                    # Processar tabelas, listas e alinhamento nas alternativas também
                     texto_alt_com_tabelas = self._processar_tabelas_visuais(texto_alt_raw)
                     texto_alt_com_listas = self._processar_listas(texto_alt_com_tabelas)
-                    texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_listas)
+                    texto_alt_com_alinhamento = self._processar_blocos_alinhamento(texto_alt_com_listas)
+                    texto_alt_com_formatacao = self._processar_formatacoes_html(texto_alt_com_alinhamento)
+                    texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_formatacao)
                     texto_alt = self._processar_imagens_inline(texto_alt_escaped, centralizar=False)
                     texto_alt = self._processar_tabelas(texto_alt)
                     item += f"    \\item {texto_alt}\n"
@@ -848,7 +910,9 @@ class ExportController:
             # Processar formatações
             enunciado_com_tabelas = self._processar_tabelas_visuais(enunciado_raw)
             enunciado_com_listas = self._processar_listas(enunciado_com_tabelas)
-            enunciado_escaped = self._escape_preservando_comandos(enunciado_com_listas)
+            enunciado_com_alinhamento = self._processar_blocos_alinhamento(enunciado_com_listas)
+            enunciado_com_formatacao = self._processar_formatacoes_html(enunciado_com_alinhamento)
+            enunciado_escaped = self._escape_preservando_comandos(enunciado_com_formatacao)
             enunciado = self._processar_imagens_inline(enunciado_escaped)
             enunciado = self._processar_tabelas(enunciado)
             fonte = questao_para_usar.get('fonte') or ''
@@ -886,7 +950,9 @@ class ExportController:
                     texto_alt_raw = alt.get('texto', '')
                     texto_alt_com_tabelas = self._processar_tabelas_visuais(texto_alt_raw)
                     texto_alt_com_listas = self._processar_listas(texto_alt_com_tabelas)
-                    texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_listas)
+                    texto_alt_com_alinhamento = self._processar_blocos_alinhamento(texto_alt_com_listas)
+                    texto_alt_com_formatacao = self._processar_formatacoes_html(texto_alt_com_alinhamento)
+                    texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_formatacao)
                     texto_alt = self._processar_imagens_inline(texto_alt_escaped, centralizar=False)
                     texto_alt = self._processar_tabelas(texto_alt)
                     item += f"    \\item {texto_alt}\n"

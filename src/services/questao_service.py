@@ -89,6 +89,7 @@ class QuestaoService:
         dificuldade: Optional[str] = None,
         observacoes: Optional[str] = None,
         tags: Optional[List[str]] = None,
+        niveis_escolares: Optional[List[str]] = None,
         alternativas: Optional[List[Dict[str, Any]]] = None,
         resposta_objetiva: Optional[Dict[str, Any]] = None,
         resposta_discursiva: Optional[Dict[str, Any]] = None
@@ -137,6 +138,15 @@ class QuestaoService:
                     tag = self.tag_repo.buscar_por_nome(tag_ref)
                 if tag:
                     questao.adicionar_tag(self.session, tag)
+
+        # Adicionar níveis escolares
+        if niveis_escolares:
+            from src.models.orm import NivelEscolar
+            for nivel_uuid in niveis_escolares:
+                if nivel_uuid and isinstance(nivel_uuid, str):
+                    nivel = self.session.query(NivelEscolar).filter_by(uuid=nivel_uuid, ativo=True).first()
+                    if nivel:
+                        questao.adicionar_nivel(nivel)
 
         # Adicionar alternativas (apenas para objetivas)
         alternativas_criadas = []
@@ -306,6 +316,9 @@ class QuestaoService:
         # Tratar tags separadamente (requerem objetos Tag, não IDs)
         tags_ids = kwargs.pop('tags', None)
 
+        # Tratar niveis escolares separadamente
+        niveis_uuids = kwargs.pop('niveis_escolares', None)
+
         # Tratar alternativas separadamente
         alternativas_data = kwargs.pop('alternativas', None)
 
@@ -371,6 +384,25 @@ class QuestaoService:
                             insert(QuestaoTag).values(
                                 uuid_questao=questao.uuid,
                                 uuid_tag=tag.uuid
+                            )
+                        )
+
+        # Atualizar níveis escolares se fornecidos
+        if niveis_uuids is not None and isinstance(niveis_uuids, list):
+            from src.models.orm import NivelEscolar
+            from src.models.orm.questao_nivel import questao_nivel
+            from sqlalchemy import delete, insert
+            # Limpar níveis existentes
+            self.session.execute(delete(questao_nivel).where(questao_nivel.c.uuid_questao == questao.uuid))
+            # Adicionar novos níveis
+            for nivel_uuid in niveis_uuids:
+                if nivel_uuid and isinstance(nivel_uuid, str):
+                    nivel = self.session.query(NivelEscolar).filter_by(uuid=nivel_uuid, ativo=True).first()
+                    if nivel:
+                        self.session.execute(
+                            insert(questao_nivel).values(
+                                uuid_questao=questao.uuid,
+                                uuid_nivel=nivel.uuid
                             )
                         )
 

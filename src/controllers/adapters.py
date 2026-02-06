@@ -45,6 +45,7 @@ class QuestaoControllerAdapter:
             'dificuldade': self._map_dificuldade(dto.id_dificuldade),
             'observacoes': dto.observacoes,
             'tags': dto.tags if hasattr(dto, 'tags') else [],
+            'niveis_escolares': dto.niveis_escolares if hasattr(dto, 'niveis_escolares') else [],
             'alternativas': [
                 {
                     'letra': alt.letra,
@@ -126,6 +127,7 @@ class QuestaoControllerAdapter:
             'dificuldade': self._map_dificuldade(dto.id_dificuldade),
             'observacoes': getattr(dto, 'observacoes', None),
             'tags': getattr(dto, 'tags', []),
+            'niveis_escolares': getattr(dto, 'niveis_escolares', []),
             'alternativas': [
                 {
                     'letra': alt.get('letra') if isinstance(alt, dict) else alt.letra,

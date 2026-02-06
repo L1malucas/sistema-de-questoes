@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QRadioButton, QButtonGroup, QScrollArea, QSizePolicy, QPushButton, QComboBox
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QIntValidator
 from src.views.design.constants import Color, Spacing, Typography, Dimensions
 from src.views.components.common.inputs import TextInput, LatexTextArea, FormattingToolbar
@@ -204,6 +204,27 @@ class EditorTab(QWidget):
         main_layout.addWidget(scroll_area)
 
         self._connect_content_signals()
+        self._setup_shared_toolbar()
+
+    def _setup_shared_toolbar(self):
+        """Configura a toolbar do enunciado como compartilhada com as alternativas."""
+        # Mapa de text areas para labels descritivos
+        self._text_area_labels = {id(self.statement_input): "Enunciado"}
+        for alt_widget in self.alternatives_widgets:
+            self._text_area_labels[id(alt_widget.text_input)] = f"Alternativa {alt_widget.char}"
+
+        # Instalar event filter em cada text area para detectar foco
+        self.statement_input.installEventFilter(self)
+        for alt_widget in self.alternatives_widgets:
+            alt_widget.text_input.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        """Detecta foco nos text areas e redireciona a toolbar compartilhada."""
+        if event.type() == QEvent.Type.FocusIn:
+            label = self._text_area_labels.get(id(obj))
+            if label is not None:
+                self.statement_toolbar.set_target(obj, label)
+        return super().eventFilter(obj, event)
 
     def _create_alternative_input(self, char: str):
         container = QWidget(self)
@@ -224,7 +245,6 @@ class EditorTab(QWidget):
         radio_button = QRadioButton(char, container)
         radio_button.setObjectName(f"alternative_radio_{char}")
         radio_button.setMinimumWidth(30)
-        # Estilo do radio button com indicador visível
         radio_button.setStyleSheet(f"""
             QRadioButton {{
                 font-size: {Typography.FONT_SIZE_LG};
@@ -247,11 +267,12 @@ class EditorTab(QWidget):
                 border: 2px solid {Color.PRIMARY_BLUE};
             }}
         """)
-        # Conectar sinal para atualizar estilo visual quando selecionado
         radio_button.toggled.connect(lambda checked, c=container, ch=char: self._on_alternative_toggled(c, ch, checked))
         layout.addWidget(radio_button)
 
-        text_input = TextInput(placeholder_text=f"Alternativa {char}", parent=container)
+        text_input = LatexTextArea(placeholder_text=f"Alternativa {char}", parent=container)
+        text_input.setMinimumHeight(50)
+        text_input.setMaximumHeight(80)
         layout.addWidget(text_input)
 
         add_image_button = QPushButton("IMG", container)
@@ -272,9 +293,10 @@ class EditorTab(QWidget):
         """)
         layout.addWidget(add_image_button)
 
-        container.text_input = text_input # Attach for easier access
-        container.radio_button = radio_button # Attach for easier access
-        container.add_image_button = add_image_button # Attach for easier access
+        container.text_input = text_input
+        container.radio_button = radio_button
+        container.add_image_button = add_image_button
+        container.char = char
         return container
 
     def _on_alternative_toggled(self, container, char: str, checked: bool):

@@ -478,6 +478,8 @@ class TagsTab(QWidget):
         self.selected_tag_uuids = []
         self.tags_list.clearSelection()
         self._update_selected_badges()
+        # Resetar disciplina para o estado inicial
+        self.disciplina_combo.setCurrentIndex(0)
         self.tags_changed.emit([])
 
 

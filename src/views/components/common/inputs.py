@@ -847,6 +847,61 @@ class FormattingToolbar(QFrame):
         ('Φ', 'Phi'), ('Χ', 'Chi'), ('Ψ', 'Psi'), ('Ω', 'Omega')
     ]
 
+    # Símbolos especiais organizados por categoria
+    SPECIAL_SYMBOLS = {
+        'Operadores': [
+            ('±', 'mais ou menos'), ('×', 'multiplicação'), ('÷', 'divisão'),
+            ('·', 'ponto médio'), ('∘', 'composição'), ('⊕', 'soma direta'),
+            ('⊗', 'produto tensorial'),
+        ],
+        'Relações': [
+            ('≠', 'diferente'), ('≈', 'aproximado'), ('≡', 'idêntico'),
+            ('≤', 'menor ou igual'), ('≥', 'maior ou igual'),
+            ('≪', 'muito menor'), ('≫', 'muito maior'),
+            ('∝', 'proporcional'), ('≅', 'congruente'), ('∼', 'similar'),
+        ],
+        'Conjuntos': [
+            ('∈', 'pertence'), ('∉', 'não pertence'),
+            ('⊂', 'subconjunto'), ('⊃', 'superconjunto'),
+            ('⊆', 'subconjunto ou igual'), ('⊇', 'superconjunto ou igual'),
+            ('∪', 'união'), ('∩', 'interseção'), ('∅', 'conjunto vazio'),
+            ('ℕ', 'naturais'), ('ℤ', 'inteiros'), ('ℚ', 'racionais'),
+            ('ℝ', 'reais'), ('ℂ', 'complexos'),
+        ],
+        'Geometria': [
+            ('∠', 'ângulo'), ('°', 'grau'), ('′', 'minuto de arco'),
+            ('″', 'segundo de arco'), ('∥', 'paralelo'), ('⊥', 'perpendicular'),
+            ('△', 'triângulo'), ('□', 'quadrado'), ('○', 'círculo'),
+            ('⌢', 'arco'),
+        ],
+        'Cálculo': [
+            ('√', 'raiz quadrada'), ('∛', 'raiz cúbica'),
+            ('∞', 'infinito'), ('∂', 'derivada parcial'),
+            ('∫', 'integral'), ('∬', 'integral dupla'),
+            ('∑', 'somatório'), ('∏', 'produtório'),
+            ('∇', 'nabla/gradiente'), ('ℓ', 'l cursivo'),
+        ],
+        'Lógica': [
+            ('∀', 'para todo'), ('∃', 'existe'), ('∄', 'não existe'),
+            ('¬', 'negação'), ('∧', 'e lógico'), ('∨', 'ou lógico'),
+            ('⇒', 'implica'), ('⇐', 'implicado por'), ('⇔', 'se e somente se'),
+        ],
+        'Setas': [
+            ('→', 'seta direita'), ('←', 'seta esquerda'), ('↔', 'seta dupla'),
+            ('↑', 'seta cima'), ('↓', 'seta baixo'),
+            ('↗', 'seta diagonal NE'), ('↘', 'seta diagonal SE'),
+            ('⟶', 'seta longa direita'), ('⟵', 'seta longa esquerda'),
+        ],
+        'Frações e Índices': [
+            ('½', 'um meio'), ('⅓', 'um terço'), ('⅔', 'dois terços'),
+            ('¼', 'um quarto'), ('¾', 'três quartos'),
+            ('¹', 'expoente 1'), ('²', 'expoente 2'), ('³', 'expoente 3'),
+            ('⁰', 'expoente 0'), ('ⁿ', 'expoente n'),
+            ('₀', 'índice 0'), ('₁', 'índice 1'), ('₂', 'índice 2'),
+            ('₃', 'índice 3'), ('ₙ', 'índice n'),
+        ],
+    }
+
     def __init__(self, text_edit: QTextEdit, parent=None):
         super().__init__(parent)
         self.text_edit = text_edit
@@ -958,6 +1013,42 @@ class FormattingToolbar(QFrame):
         separator3.setFixedWidth(1)
         layout.addWidget(separator3)
 
+        # Botão Símbolos Especiais
+        self.symbols_btn = QPushButton("∑∞", self)
+        self.symbols_btn.setToolTip("Símbolos especiais")
+        self.symbols_btn.setStyleSheet(button_style)
+        self.symbols_menu = self._create_symbols_menu()
+        self.symbols_btn.setMenu(self.symbols_menu)
+        layout.addWidget(self.symbols_btn)
+
+        # Separador 4
+        separator4 = QFrame(self)
+        separator4.setFrameShape(QFrame.Shape.VLine)
+        separator4.setStyleSheet(f"background-color: {Color.BORDER_MEDIUM};")
+        separator4.setFixedWidth(1)
+        layout.addWidget(separator4)
+
+        # Botão Fração
+        self.fraction_btn = QPushButton("a⁄b", self)
+        self.fraction_btn.setToolTip("Fração")
+        self.fraction_btn.setStyleSheet(button_style)
+        self.fraction_btn.clicked.connect(self._apply_fraction)
+        layout.addWidget(self.fraction_btn)
+
+        # Botão Raiz Quadrada
+        self.sqrt_btn = QPushButton("√x", self)
+        self.sqrt_btn.setToolTip("Raiz quadrada")
+        self.sqrt_btn.setStyleSheet(button_style)
+        self.sqrt_btn.clicked.connect(self._apply_sqrt)
+        layout.addWidget(self.sqrt_btn)
+
+        # Separador 4b
+        separator4b = QFrame(self)
+        separator4b.setFrameShape(QFrame.Shape.VLine)
+        separator4b.setStyleSheet(f"background-color: {Color.BORDER_MEDIUM};")
+        separator4b.setFixedWidth(1)
+        layout.addWidget(separator4b)
+
         # Botão Lista Itemizada (marcadores)
         self.list_itemized_btn = QPushButton("• ─", self)
         self.list_itemized_btn.setToolTip("Lista com marcadores")
@@ -972,12 +1063,12 @@ class FormattingToolbar(QFrame):
         self.list_enumerated_btn.clicked.connect(self._open_enumerated_list_dialog)
         layout.addWidget(self.list_enumerated_btn)
 
-        # Separador 4
-        separator4 = QFrame(self)
-        separator4.setFrameShape(QFrame.Shape.VLine)
-        separator4.setStyleSheet(f"background-color: {Color.BORDER_MEDIUM};")
-        separator4.setFixedWidth(1)
-        layout.addWidget(separator4)
+        # Separador 5
+        separator5 = QFrame(self)
+        separator5.setFrameShape(QFrame.Shape.VLine)
+        separator5.setStyleSheet(f"background-color: {Color.BORDER_MEDIUM};")
+        separator5.setFixedWidth(1)
+        layout.addWidget(separator5)
 
         # Botão Tabela
         self.table_btn = QPushButton("⊞", self)
@@ -986,7 +1077,82 @@ class FormattingToolbar(QFrame):
         self.table_btn.clicked.connect(self._open_table_dialog)
         layout.addWidget(self.table_btn)
 
+        # Separador 6
+        separator6 = QFrame(self)
+        separator6.setFrameShape(QFrame.Shape.VLine)
+        separator6.setStyleSheet(f"background-color: {Color.BORDER_MEDIUM};")
+        separator6.setFixedWidth(1)
+        layout.addWidget(separator6)
+
+        # Botão Centralizar
+        self.center_btn = QPushButton("≡", self)
+        self.center_btn.setToolTip("Centralizar texto")
+        self.center_btn.setStyleSheet(button_style + "QPushButton { font-size: 16px; }")
+        self.center_btn.clicked.connect(self._apply_center)
+        layout.addWidget(self.center_btn)
+
+        # Botão Fonte (alinhado à direita, tamanho reduzido)
+        self.source_btn = QPushButton("Fonte↗", self)
+        self.source_btn.setToolTip("Fonte/referência (alinhado à direita, tamanho reduzido)")
+        self.source_btn.setStyleSheet(button_style + f"QPushButton {{ font-size: {Typography.FONT_SIZE_SM}; }}")
+        self.source_btn.clicked.connect(self._apply_source)
+        layout.addWidget(self.source_btn)
+
         layout.addStretch()
+
+        # Label indicando campo alvo (oculto por padrão, visível quando compartilhado)
+        self.target_label = QLabel("", self)
+        self.target_label.setStyleSheet(f"""
+            QLabel {{
+                color: {Color.GRAY_TEXT};
+                font-size: {Typography.FONT_SIZE_SM};
+                font-style: italic;
+                padding: 2px 6px;
+            }}
+        """)
+        self.target_label.setVisible(False)
+        layout.addWidget(self.target_label)
+
+    def set_target(self, text_edit: QTextEdit, label: str = ""):
+        """Muda o campo de texto alvo da toolbar."""
+        self.text_edit = text_edit
+        if label:
+            self.target_label.setText(f"Editando: {label}")
+            self.target_label.setVisible(True)
+        else:
+            self.target_label.setVisible(False)
+
+    def _create_symbols_menu(self) -> QMenu:
+        """Cria menu com símbolos especiais organizados por categoria."""
+        menu_style = f"""
+            QMenu {{
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_MEDIUM};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 4px 12px;
+                font-size: 12px;
+            }}
+            QMenu::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_1};
+                color: {Color.PRIMARY_BLUE};
+            }}
+        """
+
+        menu = QMenu(self)
+        menu.setStyleSheet(menu_style)
+
+        for category, symbols in self.SPECIAL_SYMBOLS.items():
+            submenu = menu.addMenu(category)
+            submenu.setStyleSheet(menu_style)
+            for symbol, name in symbols:
+                action = QAction(f"{symbol}  ({name})", self)
+                action.triggered.connect(lambda checked, s=symbol: self._insert_text(s))
+                submenu.addAction(action)
+
+        return menu
 
     def _create_greek_menu(self, letters: list) -> QMenu:
         """Cria menu com letras gregas."""
@@ -1080,6 +1246,59 @@ class FormattingToolbar(QFrame):
         else:
             cursor.insertText("<sub></sub>")
             cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, 6)
+        self.text_edit.setTextCursor(cursor)
+        self.text_edit.setFocus()
+
+    def _apply_fraction(self):
+        """Insere fração LaTeX $\\frac{numerador}{denominador}$."""
+        cursor = self.text_edit.textCursor()
+        if cursor.hasSelection():
+            selected = cursor.selectedText()
+            cursor.insertText(f"$\\frac{{{selected}}}{{}}$")
+            # Posicionar cursor dentro do segundo par de chaves (antes do $)
+            cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, 2)
+        else:
+            cursor.insertText("$\\frac{}{}$")
+            # Posicionar cursor dentro do primeiro par de chaves
+            cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, 4)
+        self.text_edit.setTextCursor(cursor)
+        self.text_edit.setFocus()
+
+    def _apply_sqrt(self):
+        """Insere raiz quadrada LaTeX $\\sqrt{conteúdo}$."""
+        cursor = self.text_edit.textCursor()
+        if cursor.hasSelection():
+            selected = cursor.selectedText()
+            cursor.insertText(f"$\\sqrt{{{selected}}}$")
+        else:
+            cursor.insertText("$\\sqrt{}$")
+            # Posicionar cursor dentro das chaves
+            cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, 2)
+        self.text_edit.setTextCursor(cursor)
+        self.text_edit.setFocus()
+
+    def _apply_center(self):
+        """Aplica centralização ao texto selecionado ou insere bloco centralizado."""
+        cursor = self.text_edit.textCursor()
+        if cursor.hasSelection():
+            selected = cursor.selectedText()
+            cursor.insertText(f"[CENTRO]{selected}[/CENTRO]")
+        else:
+            cursor.insertText("[CENTRO][/CENTRO]")
+            cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, 9)
+        self.text_edit.setTextCursor(cursor)
+        self.text_edit.setFocus()
+
+    def _apply_source(self):
+        """Aplica formatação de fonte/referência (alinhado à direita, tamanho reduzido)."""
+        cursor = self.text_edit.textCursor()
+        prefix = "\n" if cursor.position() > 0 else ""
+        if cursor.hasSelection():
+            selected = cursor.selectedText()
+            cursor.insertText(f"{prefix}[FONTE]{selected}[/FONTE]")
+        else:
+            cursor.insertText(f"{prefix}[FONTE][/FONTE]")
+            cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, 8)
         self.text_edit.setTextCursor(cursor)
         self.text_edit.setFocus()
 

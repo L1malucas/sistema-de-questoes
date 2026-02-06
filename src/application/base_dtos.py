@@ -19,6 +19,7 @@ class QuestaoCreateDTO:
     id_dificuldade: Optional[int] = None
     observacoes: Optional[str] = None
     tags: List[str] = field(default_factory=list)
+    niveis_escolares: List[str] = field(default_factory=list)
     alternativas: List[Any] = field(default_factory=list)
     resposta_objetiva: Optional[Any] = None
     resposta_discursiva: Optional[Any] = None
@@ -36,6 +37,7 @@ class QuestaoUpdateDTO:
     id_dificuldade: Optional[int] = None
     observacoes: Optional[str] = None
     tags: List[str] = field(default_factory=list)
+    niveis_escolares: List[str] = field(default_factory=list)
     alternativas: List[Any] = field(default_factory=list)
 
 

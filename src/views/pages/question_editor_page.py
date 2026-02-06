@@ -179,7 +179,7 @@ class QuestionEditorPage(QWidget):
         for alt_widget in self.editor_tab.alternatives_widgets:
             if hasattr(alt_widget, 'add_image_button'):
                 alt_widget.add_image_button.clicked.connect(
-                    lambda checked, ti=alt_widget.text_input: self._insert_image_to_line_edit(ti)
+                    lambda checked, ti=alt_widget.text_input: self._insert_image(ti)
                 )
 
     def _update_question_data(self):
@@ -195,7 +195,7 @@ class QuestionEditorPage(QWidget):
             self.question_data['alternatives'] = []
             for alt_widget in self.editor_tab.alternatives_widgets:
                 self.question_data['alternatives'].append({
-                    'text': alt_widget.text_input.text(),
+                    'text': alt_widget.text_input.toPlainText(),
                     'is_correct': alt_widget.radio_button.isChecked()
                 })
             self.question_data.pop('answer_key', None) # Remove answer_key if it exists
@@ -267,6 +267,9 @@ class QuestionEditorPage(QWidget):
         # Processar listas
         texto = self._processar_listas_para_html(texto)
 
+        # Processar blocos de alinhamento (antes de converter newlines)
+        texto = self._processar_blocos_alinhamento(texto)
+
         # Processar formatações de texto
         texto = self._processar_formatacoes_texto(texto)
 
@@ -274,10 +277,30 @@ class QuestionEditorPage(QWidget):
         texto = re.sub(r'\n{2,}', '<br><br>', texto)
         texto = texto.replace('\n', '<br>')
 
-        # Remover <br> redundantes ao redor de tabelas
+        # Remover <br> redundantes ao redor de tabelas e blocos de alinhamento
         texto = re.sub(r'(<br>)+(<table)', r'\2', texto)
         texto = re.sub(r'(</table>)(<br>)+', r'\1', texto)
+        texto = re.sub(r'(<br>)+(<div style="text-align:)', r'\2', texto)
+        texto = re.sub(r'(</div>)(<br>)+', r'\1', texto)
 
+        return texto
+
+    def _processar_blocos_alinhamento(self, texto: str) -> str:
+        """Processa blocos [CENTRO] e [FONTE] para HTML."""
+        # [CENTRO]texto[/CENTRO] -> div centralizado
+        texto = re.sub(
+            r'\[CENTRO\](.*?)\[/CENTRO\]',
+            r'<div style="text-align:center;">\1</div>',
+            texto,
+            flags=re.DOTALL
+        )
+        # [FONTE]texto[/FONTE] -> div alinhado à direita com tamanho reduzido
+        texto = re.sub(
+            r'\[FONTE\](.*?)\[/FONTE\]',
+            r'<div style="text-align:right;font-size:small;color:#555;">\1</div>',
+            texto,
+            flags=re.DOTALL
+        )
         return texto
 
     def _processar_tabelas_para_html(self, texto: str) -> str:
@@ -443,6 +466,16 @@ class QuestionEditorPage(QWidget):
         texto = re.sub(r'\\textsuperscript\{([^}]*)\}', r'<sup>\1</sup>', texto)
         texto = re.sub(r'\\textsubscript\{([^}]*)\}', r'<sub>\1</sub>', texto)
 
+        # Fração e raiz quadrada
+        texto = re.sub(
+            r'\\frac\{([^}]*)\}\{([^}]*)\}',
+            r'<span style="display:inline-block;text-align:center;vertical-align:middle;">'
+            r'<span style="display:block;border-bottom:1px solid #333;padding:0 2px;">\1</span>'
+            r'<span style="display:block;padding:0 2px;">\2</span></span>',
+            texto
+        )
+        texto = re.sub(r'\\sqrt\{([^}]*)\}', r'√(\1)', texto)
+
         # Letras gregas
         gregas = {
             r'\alpha': 'α', r'\beta': 'β', r'\gamma': 'γ', r'\delta': 'δ',
@@ -518,7 +551,7 @@ class QuestionEditorPage(QWidget):
             # Verificar se todas as alternativas tem texto
             empty_alts = []
             for alt_widget in self.editor_tab.alternatives_widgets:
-                if not alt_widget.text_input.text().strip():
+                if not alt_widget.text_input.toPlainText().strip():
                     letra = alt_widget.radio_button.text()
                     empty_alts.append(letra)
             if empty_alts:
@@ -612,7 +645,7 @@ class QuestionEditorPage(QWidget):
             # Verificar se todas as alternativas tem texto
             empty_alts = []
             for alt_widget in self.editor_tab.alternatives_widgets:
-                if not alt_widget.text_input.text().strip():
+                if not alt_widget.text_input.toPlainText().strip():
                     letra = alt_widget.radio_button.text()
                     empty_alts.append(letra)
             if empty_alts:
@@ -629,7 +662,7 @@ class QuestionEditorPage(QWidget):
                 letra = chr(ord('A') + i)
                 alternativas.append({
                     'letra': letra,
-                    'texto': alt_widget.text_input.text().strip(),
+                    'texto': alt_widget.text_input.toPlainText().strip(),
                     'correta': alt_widget.radio_button.isChecked()
                 })
 
@@ -789,7 +822,7 @@ class QuestionEditorPage(QWidget):
                     widget = self.editor_tab.alternatives_widgets[i]
                     texto = alt.get('texto', '') if isinstance(alt, dict) else ''
                     correta = alt.get('correta', False) if isinstance(alt, dict) else False
-                    widget.text_input.setText(texto)
+                    widget.text_input.setPlainText(texto)
                     if correta:
                         widget.radio_button.setChecked(True)
 
@@ -892,10 +925,12 @@ class QuestionEditorPage(QWidget):
         self.editor_tab.difficulty_hard.setChecked(False)
         self.editor_tab.difficulty_group.setExclusive(True)
 
-        # Limpar alternativas
+        # Limpar alternativas (desabilitar exclusividade temporariamente para permitir desmarcar todos)
+        self.editor_tab.alternatives_button_group.setExclusive(False)
         for widget in self.editor_tab.alternatives_widgets:
             widget.text_input.clear()
             widget.radio_button.setChecked(False)
+        self.editor_tab.alternatives_button_group.setExclusive(True)
 
         # Limpar tags
         self.tags_tab.clear_selection()
@@ -957,7 +992,7 @@ class QuestionEditorPage(QWidget):
                     widget = self.editor_tab.alternatives_widgets[i]
                     texto = alt.get('texto', '') if isinstance(alt, dict) else ''
                     correta = alt.get('correta', False) if isinstance(alt, dict) else False
-                    widget.text_input.setText(texto)
+                    widget.text_input.setPlainText(texto)
                     if correta:
                         widget.radio_button.setChecked(True)
 

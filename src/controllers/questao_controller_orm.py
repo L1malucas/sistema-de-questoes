@@ -82,6 +82,7 @@ class QuestaoControllerORM:
                     dificuldade=dados.get('dificuldade'),
                     observacoes=dados.get('observacoes'),
                     tags=dados.get('tags', []),
+                    niveis_escolares=dados.get('niveis_escolares', []),
                     alternativas=dados.get('alternativas'),
                     resposta_objetiva=dados.get('resposta_objetiva'),
                     resposta_discursiva=dados.get('resposta_discursiva')

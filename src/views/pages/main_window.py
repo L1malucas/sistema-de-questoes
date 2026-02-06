@@ -206,6 +206,10 @@ class MainWindow(QMainWindow):
             if id_dificuldade and id_dificuldade < 1:
                 id_dificuldade = None
 
+            # Montar lista de niveis escolares
+            school_level_uuid = question_data.get('school_level_uuid')
+            niveis_escolares = [school_level_uuid] if school_level_uuid else []
+
             if is_editing and editing_id:
                 # Modo edição - usar QuestaoUpdateDTO
                 from src.application.dtos import QuestaoUpdateDTO
@@ -218,6 +222,7 @@ class MainWindow(QMainWindow):
                     id_dificuldade=id_dificuldade,
                     alternativas=alternativas_dto,
                     tags=question_data.get('tags', []),
+                    niveis_escolares=niveis_escolares,
                     observacoes=None
                 )
                 sucesso = self.questao_controller.atualizar_questao_completa(dto)
@@ -242,6 +247,7 @@ class MainWindow(QMainWindow):
                     id_dificuldade=id_dificuldade,
                     alternativas=alternativas_dto,
                     tags=question_data.get('tags', []),
+                    niveis_escolares=niveis_escolares,
                     observacoes=None
                 )
 
