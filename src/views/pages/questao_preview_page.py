@@ -12,6 +12,7 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 import logging
 import re
 import os
+import base64
 
 from src.utils import ErrorHandler
 
@@ -448,11 +449,27 @@ li {{
         def replace_image(match):
             caminho = match.group(1)
             escala = float(match.group(2))
+            width = int(400 * escala)
+
+            # Se for URL (http/https), usar diretamente
+            if caminho.startswith(('http://', 'https://')):
+                return f'<br><img src="{caminho}" style="max-width:{width}px; display:block; margin:10px auto;"><br>'
+
+            # Se for arquivo local, converter para base64 data URI
             if os.path.exists(caminho):
-                # Converter para file:// URL
-                caminho_url = caminho.replace('\\', '/')
-                width = int(400 * escala)
-                return f'<br><img src="file:///{caminho_url}" style="max-width:{width}px; display:block; margin:10px auto;"><br>'
+                try:
+                    with open(caminho, 'rb') as f:
+                        img_data = base64.b64encode(f.read()).decode()
+                    ext = caminho.rsplit('.', 1)[-1].lower()
+                    mime_types = {
+                        'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+                        'gif': 'image/gif', 'bmp': 'image/bmp', 'svg': 'image/svg+xml'
+                    }
+                    mime = mime_types.get(ext, 'image/png')
+                    return f'<br><img src="data:{mime};base64,{img_data}" style="max-width:{width}px; display:block; margin:10px auto;"><br>'
+                except Exception as e:
+                    logger.error(f"Erro ao carregar imagem {caminho}: {e}")
+                    return ''
             return ''
 
         return re.sub(pattern, replace_image, texto)

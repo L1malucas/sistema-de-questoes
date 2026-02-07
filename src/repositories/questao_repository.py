@@ -644,6 +644,9 @@ class QuestaoRepository(BaseRepository[Questao]):
 
         Args:
             filtros: Dicionário com filtros opcionais
+                - filter_mode: 'AND' ou 'OR' (default 'AND')
+                - fonte: string ou lista de strings (siglas)
+                - dificuldade, tipo, tags, titulo: filtros padrão
 
         Returns:
             Lista de questões principais (não variantes)
@@ -654,6 +657,11 @@ class QuestaoRepository(BaseRepository[Questao]):
         # Subquery para encontrar questões que são variantes
         variantes_subquery = self.session.query(QuestaoVersao.uuid_questao_versao)
 
+        # Extrair filter_mode antes de processar filtros
+        filter_mode = 'AND'
+        if filtros:
+            filter_mode = filtros.get('filter_mode', 'AND')
+
         # Query base: questões que NÃO estão na tabela de variantes
         query = self.session.query(Questao).filter(
             Questao.ativo == True,
@@ -662,41 +670,7 @@ class QuestaoRepository(BaseRepository[Questao]):
 
         # Aplicar filtros se fornecidos
         if filtros:
-            if filtros.get('fonte'):
-                query = query.join(FonteQuestao).filter(
-                    FonteQuestao.sigla == filtros['fonte']
-                )
-
-            if filtros.get('ano_inicio') and filtros.get('ano_fim'):
-                query = query.join(AnoReferencia).filter(
-                    AnoReferencia.ano.between(filtros['ano_inicio'], filtros['ano_fim'])
-                )
-            elif filtros.get('ano_inicio'):
-                query = query.join(AnoReferencia).filter(
-                    AnoReferencia.ano >= filtros['ano_inicio']
-                )
-            elif filtros.get('ano_fim'):
-                query = query.join(AnoReferencia).filter(
-                    AnoReferencia.ano <= filtros['ano_fim']
-                )
-
-            if filtros.get('dificuldade'):
-                query = query.join(Dificuldade).filter(
-                    Dificuldade.codigo == filtros['dificuldade']
-                )
-
-            if filtros.get('tipo'):
-                query = query.join(TipoQuestao).filter(
-                    TipoQuestao.codigo == filtros['tipo']
-                )
-
-            if filtros.get('tags'):
-                tag_uuids = filtros['tags']
-                if len(tag_uuids) == 1:
-                    query = query.join(Questao.tags).filter(Tag.uuid == tag_uuids[0])
-                else:
-                    query = query.join(Questao.tags).filter(Tag.uuid.in_(tag_uuids))
-
+            # Busca por texto sempre é AND (aplicada independente do modo)
             if filtros.get('titulo'):
                 search_term = f"%{filtros['titulo']}%"
                 query = query.filter(
@@ -705,5 +679,70 @@ class QuestaoRepository(BaseRepository[Questao]):
                         Questao.enunciado.ilike(search_term)
                     )
                 )
+
+            # Coletar condições dos demais filtros
+            conditions = []
+
+            if filtros.get('fonte'):
+                fontes = filtros['fonte']
+                if isinstance(fontes, str):
+                    fontes = [fontes]
+                conditions.append(FonteQuestao.sigla.in_(fontes))
+
+            if filtros.get('ano_inicio') and filtros.get('ano_fim'):
+                conditions.append(AnoReferencia.ano.between(filtros['ano_inicio'], filtros['ano_fim']))
+            elif filtros.get('ano_inicio'):
+                conditions.append(AnoReferencia.ano >= filtros['ano_inicio'])
+            elif filtros.get('ano_fim'):
+                conditions.append(AnoReferencia.ano <= filtros['ano_fim'])
+
+            if filtros.get('dificuldade'):
+                conditions.append(Dificuldade.codigo == filtros['dificuldade'])
+
+            if filtros.get('tipo'):
+                conditions.append(TipoQuestao.codigo == filtros['tipo'])
+
+            if filtros.get('tags'):
+                tag_uuids = filtros['tags']
+                if len(tag_uuids) == 1:
+                    conditions.append(Tag.uuid == tag_uuids[0])
+                else:
+                    conditions.append(Tag.uuid.in_(tag_uuids))
+
+            if conditions:
+                # Fazer joins necessários (outerjoin para OR, join para AND)
+                needs_fonte = filtros.get('fonte')
+                needs_ano = filtros.get('ano_inicio') or filtros.get('ano_fim')
+                needs_dificuldade = filtros.get('dificuldade')
+                needs_tipo = filtros.get('tipo')
+                needs_tags = filtros.get('tags')
+
+                if filter_mode == 'OR':
+                    if needs_fonte:
+                        query = query.outerjoin(FonteQuestao)
+                    if needs_ano:
+                        query = query.outerjoin(AnoReferencia)
+                    if needs_dificuldade:
+                        query = query.outerjoin(Dificuldade)
+                    if needs_tipo:
+                        query = query.outerjoin(TipoQuestao)
+                    if needs_tags:
+                        query = query.outerjoin(Questao.tags)
+                    query = query.filter(or_(*conditions))
+                else:
+                    if needs_fonte:
+                        query = query.join(FonteQuestao)
+                    if needs_ano:
+                        query = query.join(AnoReferencia)
+                    if needs_dificuldade:
+                        query = query.join(Dificuldade)
+                    if needs_tipo:
+                        query = query.join(TipoQuestao)
+                    if needs_tags:
+                        query = query.join(Questao.tags)
+                    query = query.filter(and_(*conditions))
+
+                # Distinct para evitar duplicatas com joins
+                query = query.distinct()
 
         return query.all()

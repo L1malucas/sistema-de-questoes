@@ -87,6 +87,7 @@ class QuestionBankPage(QWidget):
         self.selected_tag_path: str = ""
         self.selected_discipline_uuid: str = None  # UUID da disciplina selecionada
         self.selected_discipline_name: str = None  # Nome da disciplina selecionada
+        self.filter_mode: str = 'AND'  # 'AND' ou 'OR'
 
         self._setup_ui()
         self._load_data()
@@ -181,6 +182,15 @@ class QuestionBankPage(QWidget):
 
         filter_buttons_layout.addStretch()
 
+        # Toggle AND/OR
+        self.filter_mode_btn = QPushButton("AND", self)
+        self.filter_mode_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.filter_mode_btn.setFixedHeight(32)
+        self.filter_mode_btn.setMinimumWidth(50)
+        self.filter_mode_btn.clicked.connect(self._toggle_filter_mode)
+        self._update_filter_mode_btn_style()
+        filter_buttons_layout.addWidget(self.filter_mode_btn)
+
         self.clear_filters_btn = SecondaryButton("Limpar Filtros", parent=self)
         self.clear_filters_btn.clicked.connect(self._clear_all_filters)
         filter_buttons_layout.addWidget(self.clear_filters_btn)
@@ -269,6 +279,10 @@ class QuestionBankPage(QWidget):
                 if 'tags' in filters and filters['tags']:
                     # Se tags é uma lista de UUIDs, converter para nomes se necessário
                     controller_filters['tags'] = filters['tags']
+
+            # Pass filter mode
+            if controller_filters:
+                controller_filters['filter_mode'] = self.filter_mode
 
             # Fetch only main questions (not variants) from database
             # This method includes 'quantidade_variantes' in each question dict
@@ -459,6 +473,52 @@ class QuestionBankPage(QWidget):
         self._load_data(self.current_filters)
         self.filter_changed.emit(self.current_filters)
 
+    def _toggle_filter_mode(self):
+        """Toggle between AND and OR filter modes."""
+        if self.filter_mode == 'AND':
+            self.filter_mode = 'OR'
+        else:
+            self.filter_mode = 'AND'
+        self._update_filter_mode_btn_style()
+        # Reload with current filters
+        self.current_page = 1
+        self._load_data(self.current_filters)
+
+    def _update_filter_mode_btn_style(self):
+        """Update the filter mode button style based on current mode."""
+        if self.filter_mode == 'AND':
+            self.filter_mode_btn.setText("Exclusivo")
+            self.filter_mode_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Color.PRIMARY_BLUE};
+                    color: {Color.WHITE};
+                    border: 1px solid {Color.PRIMARY_BLUE};
+                    border-radius: {Dimensions.BORDER_RADIUS_MD};
+                    padding: 4px 12px;
+                    font-size: {Typography.FONT_SIZE_SM};
+                    font-weight: {Typography.FONT_WEIGHT_BOLD};
+                }}
+                QPushButton:hover {{
+                    background-color: {Color.HOVER_BLUE};
+                }}
+            """)
+        else:
+            self.filter_mode_btn.setText("Inclusivo")
+            self.filter_mode_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Color.TAG_ORANGE};
+                    color: {Color.WHITE};
+                    border: 1px solid {Color.TAG_ORANGE};
+                    border-radius: {Dimensions.BORDER_RADIUS_MD};
+                    padding: 4px 12px;
+                    font-size: {Typography.FONT_SIZE_SM};
+                    font-weight: {Typography.FONT_WEIGHT_BOLD};
+                }}
+                QPushButton:hover {{
+                    background-color: #c2410c;
+                }}
+            """)
+
     def _on_question_clicked(self, uuid: str):
         """Handle question card click."""
         if not uuid:
@@ -573,30 +633,90 @@ class QuestionBankPage(QWidget):
             self.page_changed.emit(self.current_page)
 
     def _show_source_menu(self):
-        """Show source filter menu."""
+        """Show source filter menu with multi-select."""
+        from PyQt6.QtWidgets import QWidgetAction, QListWidget, QListWidgetItem, QAbstractItemView
+
         menu = QMenu(self)
         menu.setStyleSheet(f"""
             QMenu {{
                 background-color: {Color.WHITE};
                 border: 1px solid {Color.BORDER_LIGHT};
                 border-radius: {Dimensions.BORDER_RADIUS_MD};
-                padding: {Spacing.XS}px;
-            }}
-            QMenu::item {{
-                padding: {Spacing.SM}px {Spacing.MD}px;
-                border-radius: {Dimensions.BORDER_RADIUS_SM};
-            }}
-            QMenu::item:selected {{
-                background-color: {Color.LIGHT_BLUE_BG_1};
-                color: {Color.PRIMARY_BLUE};
+                padding: 0px;
             }}
         """)
 
-        # Opção para limpar filtro
-        action_all = QAction("Todas as Fontes", self)
-        action_all.triggered.connect(lambda: self._apply_source_filter(None))
-        menu.addAction(action_all)
-        menu.addSeparator()
+        # Container principal
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
+
+        # Header com label e botão limpar
+        header_widget = QWidget()
+        header_widget.setStyleSheet(f"""
+            QWidget {{
+                background-color: {Color.LIGHT_BACKGROUND};
+                border-bottom: 1px solid {Color.BORDER_LIGHT};
+            }}
+        """)
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(12, 8, 8, 8)
+
+        label = QLabel("Clique para selecionar:")
+        label.setStyleSheet(f"font-size: 12px; color: {Color.GRAY_TEXT};")
+        header_layout.addWidget(label)
+        header_layout.addStretch()
+
+        btn_clear = QPushButton("Limpar")
+        btn_clear.setStyleSheet(f"""
+            QPushButton {{
+                padding: 4px 12px;
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_LIGHT};
+                border-radius: 4px;
+                color: {Color.DARK_TEXT};
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: #fee2e2;
+                border-color: #f87171;
+            }}
+        """)
+        header_layout.addWidget(btn_clear)
+        container_layout.addWidget(header_widget)
+
+        # Lista multi-select
+        list_widget = QListWidget()
+        list_widget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+        list_widget.setStyleSheet(f"""
+            QListWidget {{
+                border: none;
+                background-color: {Color.WHITE};
+                font-size: 13px;
+                outline: none;
+            }}
+            QListWidget::item {{
+                padding: 8px 16px;
+                border-bottom: 1px solid {Color.BORDER_LIGHT};
+            }}
+            QListWidget::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_1};
+                color: {Color.PRIMARY_BLUE};
+            }}
+            QListWidget::item:hover {{
+                background-color: {Color.LIGHT_BACKGROUND};
+            }}
+        """)
+        list_widget.setFixedWidth(300)
+        list_widget.setMaximumHeight(300)
+        list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        list_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # Fontes atualmente selecionadas
+        current_fontes = self.current_filters.get('fonte', [])
+        if isinstance(current_fontes, str):
+            current_fontes = [current_fontes]
 
         # Buscar fontes do banco de dados
         try:
@@ -604,13 +724,35 @@ class QuestionBankPage(QWidget):
             fontes = listar_fontes_questao()
             for fonte in fontes:
                 sigla = fonte.get('sigla', '')
-                action = QAction(sigla, self)
-                action.triggered.connect(lambda checked, s=sigla: self._apply_source_filter(s))
-                menu.addAction(action)
+                item = QListWidgetItem(sigla)
+                item.setData(Qt.ItemDataRole.UserRole, sigla)
+                list_widget.addItem(item)
+                if sigla in current_fontes:
+                    item.setSelected(True)
         except Exception as e:
             print(f"Erro ao carregar fontes: {e}")
 
-        menu.exec(self.source_filter_btn.mapToGlobal(self.source_filter_btn.rect().bottomLeft()))
+        container_layout.addWidget(list_widget)
+
+        def apply_filter_now():
+            selected_items = list_widget.selectedItems()
+            selected_siglas = [item.data(Qt.ItemDataRole.UserRole) for item in selected_items]
+            selected_names = [item.text() for item in selected_items]
+            self._apply_source_filter_multi(selected_siglas, selected_names)
+
+        list_widget.itemSelectionChanged.connect(apply_filter_now)
+
+        def on_clear():
+            list_widget.clearSelection()
+
+        btn_clear.clicked.connect(on_clear)
+
+        widget_action = QWidgetAction(menu)
+        widget_action.setDefaultWidget(container)
+        menu.addAction(widget_action)
+
+        pos = self.source_filter_btn.mapToGlobal(self.source_filter_btn.rect().bottomLeft())
+        menu.exec(pos)
 
     def _show_difficulty_menu(self):
         """Show difficulty filter menu."""
@@ -690,11 +832,32 @@ class QuestionBankPage(QWidget):
         menu.exec(self.type_filter_btn.mapToGlobal(self.type_filter_btn.rect().bottomLeft()))
 
     def _apply_source_filter(self, source: Optional[str]):
-        """Apply source filter."""
+        """Apply source filter (single, legacy compatibility)."""
         if source:
-            self.current_filters['fonte'] = source
+            self.current_filters['fonte'] = [source]
             self.source_filter_btn.setText(f"{source} ▼")
             self._add_filter_chip(f"Fonte: {source}", "fonte")
+        else:
+            self.current_filters.pop('fonte', None)
+            self.source_filter_btn.setText("Fonte ▼")
+            self._remove_chip_by_key("fonte")
+        self.current_page = 1
+        self._load_data(self.current_filters)
+
+    def _apply_source_filter_multi(self, siglas: List[str], names: List[str]):
+        """Apply multiple source filters."""
+        if siglas and len(siglas) > 0:
+            self.current_filters['fonte'] = siglas
+            if len(names) == 1:
+                self.source_filter_btn.setText(f"{names[0]} ▼")
+                self._add_filter_chip(f"Fonte: {names[0]}", "fonte")
+            else:
+                self.source_filter_btn.setText(f"{len(names)} fontes ▼")
+                if len(names) <= 2:
+                    chip_text = " ou ".join(names)
+                else:
+                    chip_text = f"{names[0]}, {names[1]} +{len(names)-2}"
+                self._add_filter_chip(f"Fontes: {chip_text}", "fonte")
         else:
             self.current_filters.pop('fonte', None)
             self.source_filter_btn.setText("Fonte ▼")
@@ -987,6 +1150,10 @@ class QuestionBankPage(QWidget):
         self.selected_tag_path = ""
         self.selected_discipline_uuid = None
         self.selected_discipline_name = None
+
+        # Resetar modo de filtro para AND
+        self.filter_mode = 'AND'
+        self._update_filter_mode_btn_style()
 
         # Limpar busca
         self.search_input.clear()

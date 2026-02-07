@@ -1,5 +1,8 @@
 # src/views/pages/question_editor_page.py
 import re
+import os
+import base64
+import logging
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTabWidget, QStackedWidget, QSpacerItem, QSizePolicy, QFrame,
@@ -273,6 +276,9 @@ class QuestionEditorPage(QWidget):
         # Processar formatações de texto
         texto = self._processar_formatacoes_texto(texto)
 
+        # Processar imagens
+        texto = self._processar_imagens(texto)
+
         # Converter múltiplas quebras de linha em uma única <br>
         texto = re.sub(r'\n{2,}', '<br><br>', texto)
         texto = texto.replace('\n', '<br>')
@@ -493,6 +499,39 @@ class QuestionEditorPage(QWidget):
             texto = texto.replace(latex, unicode_char)
 
         return texto
+
+    def _processar_imagens(self, texto: str) -> str:
+        """Processa placeholders de imagem [IMG:caminho:escala] para HTML."""
+        logger = logging.getLogger(__name__)
+        pattern = r'\[IMG:(.+?):([0-9.]+)\]'
+
+        def replace_image(match):
+            caminho = match.group(1)
+            escala = float(match.group(2))
+            width = int(400 * escala)
+
+            # Se for URL (http/https), usar diretamente
+            if caminho.startswith(('http://', 'https://')):
+                return f'<br><img src="{caminho}" style="max-width:{width}px; display:block; margin:10px auto;"><br>'
+
+            # Se for arquivo local, converter para base64 data URI
+            if os.path.exists(caminho):
+                try:
+                    with open(caminho, 'rb') as f:
+                        img_data = base64.b64encode(f.read()).decode()
+                    ext = caminho.rsplit('.', 1)[-1].lower()
+                    mime_types = {
+                        'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+                        'gif': 'image/gif', 'bmp': 'image/bmp', 'svg': 'image/svg+xml'
+                    }
+                    mime = mime_types.get(ext, 'image/png')
+                    return f'<br><img src="data:{mime};base64,{img_data}" style="max-width:{width}px; display:block; margin:10px auto;"><br>'
+                except Exception as e:
+                    logger.error(f"Erro ao carregar imagem {caminho}: {e}")
+                    return ''
+            return ''
+
+        return re.sub(pattern, replace_image, texto)
 
     def _update_save_button_state(self):
         # Validacao completa para habilitar o botao de salvar
