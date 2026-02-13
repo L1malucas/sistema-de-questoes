@@ -8,10 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session
 
-from backend.core.config import get_settings
-from backend.core.security import create_access_token
-from backend.db.database import get_db
-from backend.models.user import User
+from core.config import get_settings
+from core.security import create_access_token
+from db.database import get_db
+from models.user import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"])
