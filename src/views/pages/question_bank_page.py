@@ -293,6 +293,13 @@ class QuestionBankPage(QWidget):
             # Filtrar apenas questões ativas
             self.questions_data = [q for q in self.questions_data if q.get('ativo', True)]
 
+            # Ordenar: 1º por ano (desc), 2º por tag (asc), 3º por data de criação (desc)
+            self.questions_data.sort(key=lambda q: (
+                -(q.get('ano') or 0),                               # Ano descendente
+                (q.get('tags', [''])[0] if q.get('tags') else ''),  # Primeira tag ascendente
+                -(q.get('data_criacao').timestamp() if q.get('data_criacao') else 0),  # Criação desc
+            ))
+
             self.total_results = len(self.questions_data)
             self._update_ui()
 
@@ -1073,6 +1080,18 @@ class QuestionBankPage(QWidget):
         pos = self.tag_filter_btn.mapToGlobal(self.tag_filter_btn.rect().bottomLeft())
         menu.exec(pos)
 
+    def _get_discipline_tag_uuids(self, uuid_disciplina: str) -> List[str]:
+        """Busca todos os UUIDs de tags de uma disciplina."""
+        try:
+            from src.controllers.adapters import criar_tag_controller
+            tag_controller = criar_tag_controller()
+            tags = tag_controller.listar_tags_por_disciplina(uuid_disciplina)
+            return [tag.get('uuid') for tag in tags if tag.get('uuid')]
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Erro ao buscar tags da disciplina: {e}")
+            return []
+
     def _apply_discipline_filter(self, uuid: Optional[str], name: Optional[str]):
         """Apply discipline filter."""
         if uuid:
@@ -1082,6 +1101,13 @@ class QuestionBankPage(QWidget):
             self._add_filter_chip(f"Disciplina: {name}", "disciplina")
             # Habilitar botão de tags
             self.tag_filter_btn.setEnabled(True)
+            # Filtrar por todas as tags da disciplina
+            disc_tag_uuids = self._get_discipline_tag_uuids(uuid)
+            if disc_tag_uuids:
+                self.current_filters['tags'] = disc_tag_uuids
+            # Limpar filtro de tag específico (será substituído pelo da disciplina)
+            self._remove_chip_by_key("tag")
+            self.tag_filter_btn.setText("Conteúdo ▼")
         else:
             self.selected_discipline_uuid = None
             self.selected_discipline_name = None
@@ -1094,7 +1120,6 @@ class QuestionBankPage(QWidget):
             self.current_filters.pop('tags', None)
             self._remove_chip_by_key("tag")
 
-        # Nota: disciplina não filtra diretamente, apenas habilita o filtro de tags
         self.current_page = 1
         self._load_data(self.current_filters)
 
@@ -1127,7 +1152,15 @@ class QuestionBankPage(QWidget):
                     chip_text = f"{names[0]}, {names[1]} +{len(names)-2}"
                 self._add_filter_chip(f"Conteúdos: {chip_text}", "tag")
         else:
-            self.current_filters.pop('tags', None)
+            # Quando limpa tags específicas, voltar para filtro da disciplina se ativa
+            if self.selected_discipline_uuid:
+                disc_tag_uuids = self._get_discipline_tag_uuids(self.selected_discipline_uuid)
+                if disc_tag_uuids:
+                    self.current_filters['tags'] = disc_tag_uuids
+                else:
+                    self.current_filters.pop('tags', None)
+            else:
+                self.current_filters.pop('tags', None)
             self.tag_filter_btn.setText("Conteúdo ▼")
             self._remove_chip_by_key("tag")
         self.current_page = 1
@@ -1195,7 +1228,15 @@ class QuestionBankPage(QWidget):
     def _remove_filter(self, filter_key: str):
         """Remove a filter and refresh data."""
         if filter_key == 'tags' or filter_key == 'tag':
-            self.current_filters.pop('tags', None)
+            # Ao remover tag específica, voltar para filtro da disciplina se ativa
+            if self.selected_discipline_uuid:
+                disc_tag_uuids = self._get_discipline_tag_uuids(self.selected_discipline_uuid)
+                if disc_tag_uuids:
+                    self.current_filters['tags'] = disc_tag_uuids
+                else:
+                    self.current_filters.pop('tags', None)
+            else:
+                self.current_filters.pop('tags', None)
         elif filter_key in self.current_filters:
             del self.current_filters[filter_key]
 

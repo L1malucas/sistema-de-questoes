@@ -2,7 +2,7 @@
 DTOs para Export - Compatibilidade com views
 """
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 
 @dataclass
@@ -32,3 +32,5 @@ class ExportOptionsDTO:
     serie_simulado: Optional[str] = None  # Ex: "3º ANO VESPERTINO"
     unidade: Optional[str] = None  # I, II ou III
     tipo_simulado: Optional[str] = None  # Ex: "LINGUAGENS, CÓDIGOS E SUAS TECNOLOGIAS"
+    # Configuração por questão (wallon_av2): chave=codigo_questao, valor="normal"|"5linhas"|"espaco_borda"
+    questoes_config: Optional[Dict[str, str]] = None

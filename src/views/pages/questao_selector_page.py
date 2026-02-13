@@ -542,12 +542,9 @@ class QuestaoSelectorDialog(QDialog):
                 if 'tags' in filters and filters['tags']:
                     controller_filters['tags'] = filters['tags']
 
-            self.questions_data = QuestaoControllerORM.listar_questoes(
+            self.questions_data = QuestaoControllerORM.listar_questoes_principais(
                 controller_filters if controller_filters else None
             )
-
-            # Filter only active questions
-            self.questions_data = [q for q in self.questions_data if q.get('ativo', True)]
 
             self.total_results = len(self.questions_data)
             self._update_ui()

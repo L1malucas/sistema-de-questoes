@@ -309,7 +309,7 @@ class TagRepository(BaseRepository[Tag]):
         """
 
         def construir_arvore(tag) -> dict:
-            filhos_ativos = [f for f in tag.filhos if f.ativo]
+            filhos_ativos = [f for f in tag.tags_filhas if f.ativo]
             filhos_ativos.sort(key=lambda x: (x.ordem, x.numeracao))
 
             return {

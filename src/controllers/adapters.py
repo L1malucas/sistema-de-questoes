@@ -436,6 +436,224 @@ def listar_niveis_escolares():
     session = session_manager.create_session()
     try:
         niveis = session.query(NivelEscolar).filter_by(ativo=True).order_by(NivelEscolar.ordem).all()
-        return [{'uuid': n.uuid, 'codigo': n.codigo, 'nome': n.nome} for n in niveis]
+        return [{'uuid': n.uuid, 'codigo': n.codigo, 'nome': n.nome, 'descricao': n.descricao, 'ordem': n.ordem} for n in niveis]
+    finally:
+        session.close()
+
+
+# ===== CRUD Disciplinas =====
+
+def listar_disciplinas_completas():
+    """Lista todas as disciplinas ativas com todos os campos"""
+    from src.database import session_manager
+    from src.repositories.disciplina_repository import DisciplinaRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = DisciplinaRepository(session)
+        disciplinas = repo.listar_todas(apenas_ativas=True)
+        return [
+            {
+                'uuid': d.uuid, 'codigo': d.codigo, 'nome': d.nome,
+                'descricao': d.descricao, 'cor': d.cor, 'ordem': d.ordem
+            }
+            for d in disciplinas
+        ]
+    finally:
+        session.close()
+
+
+def criar_disciplina(dados: dict):
+    """Cria uma nova disciplina"""
+    from src.database import session_manager
+    from src.repositories.disciplina_repository import DisciplinaRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = DisciplinaRepository(session)
+        d = repo.criar(dados)
+        if d:
+            return {'uuid': d.uuid, 'codigo': d.codigo, 'nome': d.nome, 'cor': d.cor, 'ordem': d.ordem}
+        return None
+    finally:
+        session.close()
+
+
+def atualizar_disciplina(uuid_disc: str, dados: dict):
+    """Atualiza uma disciplina existente"""
+    from src.database import session_manager
+    from src.repositories.disciplina_repository import DisciplinaRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = DisciplinaRepository(session)
+        d = repo.atualizar(uuid_disc, dados)
+        if d:
+            return {'uuid': d.uuid, 'codigo': d.codigo, 'nome': d.nome, 'cor': d.cor, 'ordem': d.ordem}
+        return None
+    finally:
+        session.close()
+
+
+def inativar_disciplina(uuid_disc: str):
+    """Inativa uma disciplina (soft delete)"""
+    from src.database import session_manager
+    from src.repositories.disciplina_repository import DisciplinaRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = DisciplinaRepository(session)
+        return repo.inativar(uuid_disc)
+    finally:
+        session.close()
+
+
+# ===== CRUD Fontes de Questão =====
+
+def criar_fonte_questao(dados: dict):
+    """Cria uma nova fonte de questão"""
+    from src.database import session_manager
+    from src.repositories.fonte_questao_repository import FonteQuestaoRepository
+    import uuid as uuid_mod
+    from datetime import datetime
+
+    session = session_manager.create_session()
+    try:
+        repo = FonteQuestaoRepository(session)
+        f = repo.criar(
+            uuid=str(uuid_mod.uuid4()),
+            sigla=dados['sigla'].upper(),
+            nome_completo=dados['nome_completo'],
+            tipo_instituicao=dados.get('tipo_instituicao', 'VESTIBULAR'),
+            data_criacao=datetime.now()
+        )
+        session.commit()
+        if f:
+            return {'uuid': f.uuid, 'sigla': f.sigla, 'nome_completo': f.nome_completo, 'tipo_instituicao': f.tipo_instituicao}
+        return None
+    except Exception:
+        session.rollback()
+        return None
+    finally:
+        session.close()
+
+
+def atualizar_fonte_questao(uuid_fonte: str, dados: dict):
+    """Atualiza uma fonte de questão"""
+    from src.database import session_manager
+    from src.repositories.fonte_questao_repository import FonteQuestaoRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = FonteQuestaoRepository(session)
+        kwargs = {}
+        if 'sigla' in dados:
+            kwargs['sigla'] = dados['sigla'].upper()
+        if 'nome_completo' in dados:
+            kwargs['nome_completo'] = dados['nome_completo']
+        if 'tipo_instituicao' in dados:
+            kwargs['tipo_instituicao'] = dados['tipo_instituicao']
+        f = repo.atualizar(uuid_fonte, **kwargs)
+        session.commit()
+        if f:
+            return {'uuid': f.uuid, 'sigla': f.sigla, 'nome_completo': f.nome_completo, 'tipo_instituicao': f.tipo_instituicao}
+        return None
+    except Exception:
+        session.rollback()
+        return None
+    finally:
+        session.close()
+
+
+def inativar_fonte_questao(uuid_fonte: str):
+    """Inativa uma fonte de questão (soft delete)"""
+    from src.database import session_manager
+    from src.repositories.fonte_questao_repository import FonteQuestaoRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = FonteQuestaoRepository(session)
+        result = repo.desativar(uuid_fonte)
+        session.commit()
+        return result
+    except Exception:
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+def listar_fontes_questao_completas():
+    """Lista todas as fontes com todos os campos"""
+    from src.database import session_manager
+    from src.models.orm import FonteQuestao
+
+    session = session_manager.create_session()
+    try:
+        fontes = session.query(FonteQuestao).filter_by(ativo=True).order_by(FonteQuestao.sigla).all()
+        return [
+            {'uuid': f.uuid, 'sigla': f.sigla, 'nome_completo': f.nome_completo, 'tipo_instituicao': f.tipo_instituicao}
+            for f in fontes
+        ]
+    finally:
+        session.close()
+
+
+# ===== CRUD Níveis Escolares =====
+
+def criar_nivel_escolar(dados: dict):
+    """Cria um novo nível escolar"""
+    from src.database import session_manager
+    from src.repositories.nivel_escolar_repository import NivelEscolarRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = NivelEscolarRepository(session)
+        n = repo.criar(dados)
+        if n:
+            return {'uuid': n.uuid, 'codigo': n.codigo, 'nome': n.nome, 'descricao': n.descricao, 'ordem': n.ordem}
+        return None
+    finally:
+        session.close()
+
+
+def atualizar_nivel_escolar(uuid_nivel: str, dados: dict):
+    """Atualiza um nível escolar"""
+    from src.database import session_manager
+    from src.repositories.nivel_escolar_repository import NivelEscolarRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = NivelEscolarRepository(session)
+        n = repo.atualizar(uuid_nivel, dados)
+        if n:
+            return {'uuid': n.uuid, 'codigo': n.codigo, 'nome': n.nome, 'descricao': n.descricao, 'ordem': n.ordem}
+        return None
+    finally:
+        session.close()
+
+
+def inativar_nivel_escolar(uuid_nivel: str):
+    """Inativa um nível escolar (soft delete)"""
+    from src.database import session_manager
+    from src.repositories.nivel_escolar_repository import NivelEscolarRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = NivelEscolarRepository(session)
+        return repo.inativar(uuid_nivel)
+    finally:
+        session.close()
+
+
+def buscar_arvore_disciplina(uuid_disciplina: str):
+    """Busca árvore hierárquica de tags de uma disciplina"""
+    from src.database import session_manager
+    from src.repositories.tag_repository import TagRepository
+
+    session = session_manager.create_session()
+    try:
+        repo = TagRepository(session)
+        return repo.buscar_arvore_disciplina(uuid_disciplina)
     finally:
         session.close()

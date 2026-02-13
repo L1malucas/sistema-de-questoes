@@ -116,14 +116,6 @@ class EditorTab(QWidget):
         self.scroll_layout.addWidget(QLabel("Enunciado da Questão:", self))
         self.statement_input = LatexTextArea(placeholder_text="Digite o enunciado da questão (suporta LaTeX)", parent=self)
         self.statement_toolbar = FormattingToolbar(self.statement_input, self)
-        self.scroll_layout.addWidget(self.statement_toolbar)
-        # Ajustar estilo do textarea para conectar com a toolbar
-        self.statement_input.setStyleSheet(self.statement_input.styleSheet() + """
-            QTextEdit {
-                border-top-left-radius: 0;
-                border-top-right-radius: 0;
-            }
-        """)
         self.scroll_layout.addWidget(self.statement_input)
         self.add_image_statement_button = QPushButton("+ Imagem", self)
         self.add_image_statement_button.setToolTip("Adicionar imagem ao enunciado")
@@ -168,15 +160,6 @@ class EditorTab(QWidget):
         self.answer_key_layout.setSpacing(Spacing.SM)
         self.scroll_layout.addWidget(QLabel("Chave de Resposta (para questões discursivas):", self))
         self.answer_key_input = LatexTextArea(placeholder_text="Digite a chave de resposta (suporta LaTeX)", parent=self)
-        self.answer_key_toolbar = FormattingToolbar(self.answer_key_input, self)
-        self.answer_key_layout.addWidget(self.answer_key_toolbar)
-        # Ajustar estilo do textarea para conectar com a toolbar
-        self.answer_key_input.setStyleSheet(self.answer_key_input.styleSheet() + """
-            QTextEdit {
-                border-top-left-radius: 0;
-                border-top-right-radius: 0;
-            }
-        """)
         self.answer_key_layout.addWidget(self.answer_key_input)
         self.add_image_answer_button = QPushButton("+ Imagem", self)
         self.add_image_answer_button.setToolTip("Adicionar imagem à resposta")
@@ -201,20 +184,27 @@ class EditorTab(QWidget):
         self._update_visibility_by_question_type() # Set initial visibility
 
         scroll_area.setWidget(scroll_area_content)
+
+        # Toolbar fixa acima da scroll area (não rola com o conteúdo)
+        main_layout.addWidget(self.statement_toolbar)
         main_layout.addWidget(scroll_area)
 
         self._connect_content_signals()
         self._setup_shared_toolbar()
 
     def _setup_shared_toolbar(self):
-        """Configura a toolbar do enunciado como compartilhada com as alternativas."""
+        """Configura a toolbar como compartilhada com todos os campos de texto."""
         # Mapa de text areas para labels descritivos
-        self._text_area_labels = {id(self.statement_input): "Enunciado"}
+        self._text_area_labels = {
+            id(self.statement_input): "Enunciado",
+            id(self.answer_key_input): "Chave de Resposta",
+        }
         for alt_widget in self.alternatives_widgets:
             self._text_area_labels[id(alt_widget.text_input)] = f"Alternativa {alt_widget.char}"
 
         # Instalar event filter em cada text area para detectar foco
         self.statement_input.installEventFilter(self)
+        self.answer_key_input.installEventFilter(self)
         for alt_widget in self.alternatives_widgets:
             alt_widget.text_input.installEventFilter(self)
 

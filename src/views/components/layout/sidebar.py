@@ -177,6 +177,8 @@ class TagTreeView(QTreeWidget):
                 self._add_tags_to_tree(item, tag['children'], level + 1)
             elif 'filhas' in tag and tag['filhas']:
                 self._add_tags_to_tree(item, tag['filhas'], level + 1)
+            elif 'filhos' in tag and tag['filhos']:
+                self._add_tags_to_tree(item, tag['filhos'], level + 1)
 
     def _on_item_changed(self, item: TagTreeItem, column: int):
         """Handle item checkbox state change."""

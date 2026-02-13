@@ -160,7 +160,7 @@ class ExportDialog(QDialog):
         lbl_trimestre.setFixedSize(label_width, field_height)
         trimestre_layout.addWidget(lbl_trimestre)
         self.trimestre_combo = QComboBox()
-        self.trimestre_combo.addItems(["I", "II", "III", "IV"])
+        self.trimestre_combo.addItems(["1º", "2º", "3º"])
         self.trimestre_combo.setFixedSize(100, field_height)
         self.trimestre_combo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         trimestre_layout.addWidget(self.trimestre_combo)

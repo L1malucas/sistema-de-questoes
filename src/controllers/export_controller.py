@@ -85,7 +85,14 @@ class ExportController:
             Texto com caracteres escapados, mas comandos LaTeX preservados
         """
         # Padrões de comandos LaTeX a preservar (listas, tabelas e alinhamento)
+        # IMPORTANTE: Math blocks PRIMEIRO, pois podem conter {} que confundem
+        # os padrões de comandos como \textsuperscript{[^}]*}
         patterns = [
+            # Blocos de modo matemático - preservar ANTES dos comandos
+            # Display math ($$...$$)
+            r'\$\$[^$]+\$\$',
+            # Inline math ($...$) - não capturar $ seguido de espaço/dígito (moeda)
+            r'\$(?!\s|\d)[^$]+\$',
             # Comandos de lista
             r'\\begin\{itemize\}',
             r'\\end\{itemize\}',
@@ -109,8 +116,6 @@ class ExportController:
             r'\\begin\{flushright\}',
             r'\\end\{flushright\}',
             r'\\footnotesize\s',
-            # Blocos de modo matemático ($...$) - preservar inteiro
-            r'\$[^$]+\$',
         ]
 
         # Salvar comandos com placeholders
@@ -586,22 +591,37 @@ class ExportController:
             else:
                 item = f"\\item {enunciado}\n\n"
 
-            # Adicionar alternativas (se objetiva)
-            alternativas = questao.get('alternativas', [])
-            if alternativas:
-                item += "\\begin{enumerate}[label=\\Alph*)]\n"
-                for alt in alternativas:
-                    texto_alt_raw = alt.get('texto', '')
-                    # Processar tabelas, listas e alinhamento nas alternativas também
-                    texto_alt_com_tabelas = self._processar_tabelas_visuais(texto_alt_raw)
-                    texto_alt_com_listas = self._processar_listas(texto_alt_com_tabelas)
-                    texto_alt_com_alinhamento = self._processar_blocos_alinhamento(texto_alt_com_listas)
-                    texto_alt_com_formatacao = self._processar_formatacoes_html(texto_alt_com_alinhamento)
-                    texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_formatacao)
-                    texto_alt = self._processar_imagens_inline(texto_alt_escaped, centralizar=False)
-                    texto_alt = self._processar_tabelas(texto_alt)
-                    item += f"    \\item {texto_alt}\n"
-                item += "\\end{enumerate}\n"
+            # Verificar configuração especial da questão (wallon_av2)
+            codigo_questao = questao.get('codigo', '')
+            config_questao = (opcoes.questoes_config or {}).get(codigo_questao, 'normal')
+
+            if config_questao == '5linhas':
+                # Apenas enunciado + 5 linhas para resposta
+                item += "\\vspace{0.3cm}\n"
+                for _ in range(5):
+                    item += "\\noindent\\rule{\\linewidth}{0.4pt}\\vspace{0.2cm}\n"
+            elif config_questao == 'espaco_borda':
+                # Apenas enunciado + caixa com borda 16cm x 5cm
+                item += "\\vspace{0.3cm}\n"
+                item += "\\noindent\\begin{tcolorbox}[colback=white, colframe=black, boxrule=0.5pt, width=16cm, height=5cm]\n"
+                item += "\\end{tcolorbox}\n"
+            else:
+                # Normal: adicionar alternativas (se objetiva)
+                alternativas = questao.get('alternativas', [])
+                if alternativas:
+                    item += "\\begin{enumerate}[label=\\Alph*)]\n"
+                    for alt in alternativas:
+                        texto_alt_raw = alt.get('texto', '')
+                        # Processar tabelas, listas e alinhamento nas alternativas também
+                        texto_alt_com_tabelas = self._processar_tabelas_visuais(texto_alt_raw)
+                        texto_alt_com_listas = self._processar_listas(texto_alt_com_tabelas)
+                        texto_alt_com_alinhamento = self._processar_blocos_alinhamento(texto_alt_com_listas)
+                        texto_alt_com_formatacao = self._processar_formatacoes_html(texto_alt_com_alinhamento)
+                        texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_formatacao)
+                        texto_alt = self._processar_imagens_inline(texto_alt_escaped, centralizar=False)
+                        texto_alt = self._processar_tabelas(texto_alt)
+                        item += f"    \\item {texto_alt}\n"
+                    item += "\\end{enumerate}\n"
 
             item += "\\vspace{0.5cm}\n"
             questoes_latex.append(item)
@@ -944,19 +964,34 @@ class ExportController:
             # Armazenar resposta para o gabarito
             respostas_gabarito[i] = resposta_atual
 
-            if alternativas:
-                item += "\\begin{enumerate}[label=\\Alph*)]\n"
-                for alt in alternativas:
-                    texto_alt_raw = alt.get('texto', '')
-                    texto_alt_com_tabelas = self._processar_tabelas_visuais(texto_alt_raw)
-                    texto_alt_com_listas = self._processar_listas(texto_alt_com_tabelas)
-                    texto_alt_com_alinhamento = self._processar_blocos_alinhamento(texto_alt_com_listas)
-                    texto_alt_com_formatacao = self._processar_formatacoes_html(texto_alt_com_alinhamento)
-                    texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_formatacao)
-                    texto_alt = self._processar_imagens_inline(texto_alt_escaped, centralizar=False)
-                    texto_alt = self._processar_tabelas(texto_alt)
-                    item += f"    \\item {texto_alt}\n"
-                item += "\\end{enumerate}\n"
+            # Verificar configuração especial da questão (wallon_av2)
+            config_questao = (opcoes.questoes_config or {}).get(codigo_questao, 'normal')
+
+            if config_questao == '5linhas':
+                # Apenas enunciado + 5 linhas para resposta
+                item += "\\vspace{0.3cm}\n"
+                for _ in range(5):
+                    item += "\\noindent\\rule{\\linewidth}{0.4pt}\\vspace{0.2cm}\n"
+            elif config_questao == 'espaco_borda':
+                # Apenas enunciado + caixa com borda 16cm x 5cm
+                item += "\\vspace{0.3cm}\n"
+                item += "\\noindent\\begin{tcolorbox}[colback=white, colframe=black, boxrule=0.5pt, width=16cm, height=5cm]\n"
+                item += "\\end{tcolorbox}\n"
+            else:
+                # Normal: alternativas
+                if alternativas:
+                    item += "\\begin{enumerate}[label=\\Alph*)]\n"
+                    for alt in alternativas:
+                        texto_alt_raw = alt.get('texto', '')
+                        texto_alt_com_tabelas = self._processar_tabelas_visuais(texto_alt_raw)
+                        texto_alt_com_listas = self._processar_listas(texto_alt_com_tabelas)
+                        texto_alt_com_alinhamento = self._processar_blocos_alinhamento(texto_alt_com_listas)
+                        texto_alt_com_formatacao = self._processar_formatacoes_html(texto_alt_com_alinhamento)
+                        texto_alt_escaped = self._escape_preservando_comandos(texto_alt_com_formatacao)
+                        texto_alt = self._processar_imagens_inline(texto_alt_escaped, centralizar=False)
+                        texto_alt = self._processar_tabelas(texto_alt)
+                        item += f"    \\item {texto_alt}\n"
+                    item += "\\end{enumerate}\n"
 
             item += "\\vspace{0.5cm}\n"
             questoes_latex.append(item)

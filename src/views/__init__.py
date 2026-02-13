@@ -11,12 +11,8 @@ from src.views.components.dialogs.color_picker_dialog import ColorPickerDialog
 # Páginas/Dialogos
 from src.views.pages.tag_manager_page import TagManager
 from src.views.pages.export_page import ExportDialog
-from src.views.pages.lista_form_page import ListaForm
 from src.views.pages.questao_selector_page import QuestaoSelectorDialog, SelectableQuestionCard
 from src.views.pages.questao_preview_page import QuestaoPreview
-from src.views.pages.search_page import SearchPanel, SearchPage
-from src.views.pages.lista_page import ListaPanel, ListaPage
-from src.views.pages.questao_form_page import QuestaoForm, QuestaoFormPage
 
 # Layout e componentes
 from src.views.components.layout.navbar import Navbar
@@ -45,16 +41,9 @@ __all__ = [
     # Páginas/Dialogos
     'TagManager',
     'ExportDialog',
-    'ListaForm',
     'QuestaoSelectorDialog',
     'SelectableQuestionCard',
     'QuestaoPreview',
-    'SearchPanel',
-    'SearchPage',
-    'ListaPanel',
-    'ListaPage',
-    'QuestaoForm',
-    'QuestaoFormPage',
     # Layout e componentes
     'Navbar',
     'Sidebar',

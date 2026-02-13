@@ -664,7 +664,8 @@ class QuestaoService:
                 'dificuldade': q.dificuldade.codigo if q.dificuldade else None,
                 'tags': [tag.nome for tag in q.tags if tag.ativo],
                 'ativo': q.ativo,
-                'quantidade_variantes': num_variantes
+                'quantidade_variantes': num_variantes,
+                'data_criacao': q.data_criacao,
             })
 
         return resultado

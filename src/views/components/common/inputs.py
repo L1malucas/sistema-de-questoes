@@ -910,9 +910,7 @@ class FormattingToolbar(QFrame):
             QFrame#formatting_toolbar {{
                 background-color: {Color.LIGHT_BACKGROUND};
                 border: 1px solid {Color.BORDER_LIGHT};
-                border-bottom: none;
-                border-top-left-radius: {Dimensions.BORDER_RADIUS_MD};
-                border-top-right-radius: {Dimensions.BORDER_RADIUS_MD};
+                border-radius: {Dimensions.BORDER_RADIUS_MD};
                 padding: 4px;
             }}
         """)
@@ -1028,12 +1026,21 @@ class FormattingToolbar(QFrame):
         separator4.setFixedWidth(1)
         layout.addWidget(separator4)
 
-        # Botão Fração
+        # Botão Fração (menu com tamanhos)
         self.fraction_btn = QPushButton("a⁄b", self)
-        self.fraction_btn.setToolTip("Fração")
+        self.fraction_btn.setToolTip("Fração (escolha o tamanho)")
         self.fraction_btn.setStyleSheet(button_style)
-        self.fraction_btn.clicked.connect(self._apply_fraction)
+        self.fraction_menu = self._create_fraction_menu()
+        self.fraction_btn.setMenu(self.fraction_menu)
         layout.addWidget(self.fraction_btn)
+
+        # Botão Delimitadores
+        self.delimiter_btn = QPushButton("(  )", self)
+        self.delimiter_btn.setToolTip("Delimitadores \\left \\right")
+        self.delimiter_btn.setStyleSheet(button_style)
+        self.delimiter_menu = self._create_delimiter_menu()
+        self.delimiter_btn.setMenu(self.delimiter_menu)
+        layout.addWidget(self.delimiter_btn)
 
         # Botão Raiz Quadrada
         self.sqrt_btn = QPushButton("√x", self)
@@ -1249,18 +1256,102 @@ class FormattingToolbar(QFrame):
         self.text_edit.setTextCursor(cursor)
         self.text_edit.setFocus()
 
-    def _apply_fraction(self):
-        """Insere fração LaTeX $\\frac{numerador}{denominador}$."""
+    def _create_fraction_menu(self) -> QMenu:
+        """Cria menu com opções de tamanho de fração."""
+        menu_style = f"""
+            QMenu {{
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_MEDIUM};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 16px;
+                font-size: 13px;
+            }}
+            QMenu::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_1};
+                color: {Color.PRIMARY_BLUE};
+            }}
+        """
+        menu = QMenu(self)
+        menu.setStyleSheet(menu_style)
+
+        small_action = QAction("Pequena  (\\tfrac)", self)
+        small_action.triggered.connect(lambda: self._apply_fraction("tfrac"))
+        menu.addAction(small_action)
+
+        medium_action = QAction("Média  (\\frac)", self)
+        medium_action.triggered.connect(lambda: self._apply_fraction("frac"))
+        menu.addAction(medium_action)
+
+        large_action = QAction("Grande  (\\dfrac)", self)
+        large_action.triggered.connect(lambda: self._apply_fraction("dfrac"))
+        menu.addAction(large_action)
+
+        return menu
+
+    def _create_delimiter_menu(self) -> QMenu:
+        """Cria menu com opções de delimitadores \\left \\right."""
+        menu_style = f"""
+            QMenu {{
+                background-color: {Color.WHITE};
+                border: 1px solid {Color.BORDER_MEDIUM};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 16px;
+                font-size: 13px;
+            }}
+            QMenu::item:selected {{
+                background-color: {Color.LIGHT_BLUE_BG_1};
+                color: {Color.PRIMARY_BLUE};
+            }}
+        """
+        menu = QMenu(self)
+        menu.setStyleSheet(menu_style)
+
+        parens_action = QAction("Parênteses  \\left( \\right)", self)
+        parens_action.triggered.connect(lambda: self._apply_delimiter("(", ")"))
+        menu.addAction(parens_action)
+
+        brackets_action = QAction("Colchetes  \\left[ \\right]", self)
+        brackets_action.triggered.connect(lambda: self._apply_delimiter("[", "]"))
+        menu.addAction(brackets_action)
+
+        braces_action = QAction("Chaves  \\left\\{ \\right\\}", self)
+        braces_action.triggered.connect(lambda: self._apply_delimiter("\\{", "\\}"))
+        menu.addAction(braces_action)
+
+        return menu
+
+    def _apply_fraction(self, cmd="frac"):
+        """Insere fração LaTeX com o comando especificado (tfrac, frac, dfrac)."""
         cursor = self.text_edit.textCursor()
         if cursor.hasSelection():
             selected = cursor.selectedText()
-            cursor.insertText(f"$\\frac{{{selected}}}{{}}$")
-            # Posicionar cursor dentro do segundo par de chaves (antes do $)
+            cursor.insertText(f"$\\{cmd}{{{selected}}}{{}}$")
             cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, 2)
         else:
-            cursor.insertText("$\\frac{}{}$")
+            cursor.insertText(f"$\\{cmd}{{}}{{}}$")
             # Posicionar cursor dentro do primeiro par de chaves
             cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, 4)
+        self.text_edit.setTextCursor(cursor)
+        self.text_edit.setFocus()
+
+    def _apply_delimiter(self, left: str, right: str):
+        """Insere delimitadores \\left \\right com o par especificado."""
+        cursor = self.text_edit.textCursor()
+        if cursor.hasSelection():
+            selected = cursor.selectedText()
+            cursor.insertText(f"$\\left{left}{selected}\\right{right}$")
+        else:
+            text = f"$\\left{left}\\right{right}$"
+            cursor.insertText(text)
+            # Posicionar cursor entre \left( e \right)
+            right_part_len = len(f"\\right{right}$")
+            cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, right_part_len)
         self.text_edit.setTextCursor(cursor)
         self.text_edit.setFocus()
 

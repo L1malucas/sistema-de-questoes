@@ -3,7 +3,8 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QListWidget, QListWidgetItem, QCheckBox, QRadioButton,
     QButtonGroup, QScrollArea, QSizePolicy, QGridLayout, QMessageBox,
-    QComboBox, QFileDialog, QLineEdit, QPushButton, QSpinBox, QApplication
+    QComboBox, QFileDialog, QLineEdit, QPushButton, QSpinBox, QApplication,
+    QDialog, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QMimeData
 from PyQt6.QtGui import QDrag
@@ -29,6 +30,104 @@ class QuestionListItem(QListWidgetItem):
         self.titulo = titulo
         self.tags = tags or []
         self.setFlags(self.flags() | Qt.ItemFlag.ItemIsDragEnabled)
+
+
+class WallonQuestionConfigDialog(QDialog):
+    """Dialog para configurar o formato de cada questão antes de exportar (wallon_av2)."""
+
+    def __init__(self, questoes: List[Dict], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Configuração das Questões")
+        self.setMinimumWidth(650)
+        self.setMinimumHeight(400)
+        self._combos: List[QComboBox] = []
+        self._codigos: List[str] = []
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(Spacing.SM)
+
+        # Header
+        header = QLabel("Escolha o formato de resposta para cada questão:")
+        header.setStyleSheet(f"font-weight: {Typography.FONT_WEIGHT_SEMIBOLD}; font-size: {Typography.FONT_SIZE_MD}; color: {Color.DARK_TEXT};")
+        layout.addWidget(header)
+
+        # Scrollable area for questions
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        grid = QGridLayout(scroll_widget)
+        grid.setSpacing(Spacing.SM)
+
+        grid.addWidget(QLabel("#"), 0, 0)
+        grid.addWidget(QLabel("Questão"), 0, 1)
+        grid.addWidget(QLabel("Formato"), 0, 2)
+
+        for i, q in enumerate(questoes):
+            codigo = q.get('codigo', f'Q{i+1}')
+            titulo = q.get('titulo') or (q.get('enunciado', '')[:50])
+            self._codigos.append(codigo)
+
+            num_label = QLabel(f"{i+1}")
+            num_label.setFixedWidth(30)
+            grid.addWidget(num_label, i + 1, 0)
+
+            desc = f"{codigo} - {titulo}"
+            if len(desc) > 55:
+                desc = desc[:55] + "..."
+            q_label = QLabel(desc)
+            q_label.setToolTip(q.get('enunciado', '')[:200])
+            grid.addWidget(q_label, i + 1, 1)
+
+            combo = QComboBox()
+            combo.addItem("Normal", "normal")
+            combo.addItem("5 Linhas", "5linhas")
+            combo.addItem("Espaço com Borda", "espaco_borda")
+            combo.setMinimumWidth(160)
+            grid.addWidget(combo, i + 1, 2)
+            self._combos.append(combo)
+
+        scroll.setWidget(scroll_widget)
+        layout.addWidget(scroll, 1)
+
+        # Shortcut buttons
+        shortcut_layout = QHBoxLayout()
+        shortcut_layout.setSpacing(Spacing.SM)
+
+        btn_all_normal = QPushButton("Todos Normal")
+        btn_all_normal.clicked.connect(lambda: self._set_all("normal"))
+        shortcut_layout.addWidget(btn_all_normal)
+
+        btn_all_lines = QPushButton("Todos 5 Linhas")
+        btn_all_lines.clicked.connect(lambda: self._set_all("5linhas"))
+        shortcut_layout.addWidget(btn_all_lines)
+
+        btn_all_box = QPushButton("Todos Espaço")
+        btn_all_box.clicked.connect(lambda: self._set_all("espaco_borda"))
+        shortcut_layout.addWidget(btn_all_box)
+
+        shortcut_layout.addStretch()
+        layout.addLayout(shortcut_layout)
+
+        # Dialog buttons
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def _set_all(self, value: str):
+        for combo in self._combos:
+            idx = combo.findData(value)
+            if idx >= 0:
+                combo.setCurrentIndex(idx)
+
+    def get_config(self) -> Dict[str, str]:
+        """Retorna dict {codigo_questao: formato}."""
+        config = {}
+        for codigo, combo in zip(self._codigos, self._combos):
+            config[codigo] = combo.currentData()
+        return config
 
 
 class ExamListPage(QWidget):
@@ -403,10 +502,9 @@ class ExamListPage(QWidget):
 
         self.trimestre_combo = QComboBox(self.wallon_fields_frame)
         self.trimestre_combo.addItem("Selecione o Trimestre", "")
-        self.trimestre_combo.addItem("I", "I")
-        self.trimestre_combo.addItem("II", "II")
-        self.trimestre_combo.addItem("III", "III")
-        self.trimestre_combo.addItem("IV", "IV")
+        self.trimestre_combo.addItem("1º", "1º")
+        self.trimestre_combo.addItem("2º", "2º")
+        self.trimestre_combo.addItem("3º", "3º")
         self.trimestre_combo.setStyleSheet(self._get_combo_style())
         self.trimestre_combo.setFixedHeight(28)
         wallon_layout.addWidget(self.trimestre_combo)
@@ -1071,6 +1169,20 @@ class ExamListPage(QWidget):
             except Exception as e:
                 QMessageBox.warning(self, "Erro", f"Erro ao remover: {str(e)}")
 
+    def _get_wallon_questoes_config(self, template: str) -> Optional[Dict[str, str]]:
+        """Abre dialog de configuração de questões para wallon_av2. Retorna config ou None se cancelou."""
+        if 'wallon_av2' not in template.lower():
+            return {}  # Dict vazio = sem config especial, prosseguir normalmente
+
+        lista_dados = ListaControllerORM.buscar_lista(self.current_exam_codigo)
+        if not lista_dados or not lista_dados.get('questoes'):
+            return {}
+
+        dialog = WallonQuestionConfigDialog(lista_dados['questoes'], self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            return dialog.get_config()
+        return None  # Cancelou
+
     def _on_generate_pdf(self):
         """Handle generate PDF button."""
         if not self.current_exam_codigo:
@@ -1092,6 +1204,11 @@ class ExamListPage(QWidget):
             if not self._validate_ceab_fields():
                 return
 
+        # Dialog de configuração de questões (wallon_av2)
+        questoes_config = self._get_wallon_questoes_config(template)
+        if questoes_config is None:
+            return  # Cancelou o dialog
+
         # Escolher diretório de saída
         output_dir = QFileDialog.getExistingDirectory(
             self, "Escolher pasta de saída",
@@ -1104,7 +1221,7 @@ class ExamListPage(QWidget):
 
         # Verificar se é exportação randomizada
         if self.randomize_checkbox.isChecked():
-            self._perform_randomized_export(output_dir, template, 'direta')
+            self._perform_randomized_export(output_dir, template, 'direta', questoes_config)
             return
 
         try:
@@ -1127,7 +1244,8 @@ class ExamListPage(QWidget):
                 serie_simulado=self.serie_simulado_input.text().strip() or None,
                 # Unidade: usar campo do Wallon para listaWallon, ou campo CEAB para simuladoCeab
                 unidade=self.wallon_unidade_combo.currentData() or self.unidade_combo.currentData() or None,
-                tipo_simulado=self.tipo_simulado_combo.currentData() or None
+                tipo_simulado=self.tipo_simulado_combo.currentData() or None,
+                questoes_config=questoes_config if questoes_config else None
             )
 
             export_controller = criar_export_controller()
@@ -1219,6 +1337,11 @@ class ExamListPage(QWidget):
             if not self._validate_ceab_fields():
                 return
 
+        # Dialog de configuração de questões (wallon_av2)
+        questoes_config = self._get_wallon_questoes_config(template)
+        if questoes_config is None:
+            return  # Cancelou o dialog
+
         # Escolher diretório de saída
         output_dir = QFileDialog.getExistingDirectory(
             self, "Escolher pasta de saída",
@@ -1231,7 +1354,7 @@ class ExamListPage(QWidget):
 
         # Verificar se é exportação randomizada
         if self.randomize_checkbox.isChecked():
-            self._perform_randomized_export(output_dir, template, 'manual')
+            self._perform_randomized_export(output_dir, template, 'manual', questoes_config)
             return
 
         try:
@@ -1254,7 +1377,8 @@ class ExamListPage(QWidget):
                 serie_simulado=self.serie_simulado_input.text().strip() or None,
                 # Unidade: usar campo do Wallon para listaWallon, ou campo CEAB para simuladoCeab
                 unidade=self.wallon_unidade_combo.currentData() or self.unidade_combo.currentData() or None,
-                tipo_simulado=self.tipo_simulado_combo.currentData() or None
+                tipo_simulado=self.tipo_simulado_combo.currentData() or None,
+                questoes_config=questoes_config if questoes_config else None
             )
 
             export_controller = criar_export_controller()
@@ -1271,7 +1395,7 @@ class ExamListPage(QWidget):
                 f"Erro ao exportar LaTeX: {str(e)}"
             )
 
-    def _perform_randomized_export(self, output_dir: str, template: str, tipo_exportacao: str):
+    def _perform_randomized_export(self, output_dir: str, template: str, tipo_exportacao: str, questoes_config: Optional[Dict[str, str]] = None):
         """Perform randomized export generating multiple versions."""
         from src.application.dtos.export_dto import ExportOptionsDTO
 
@@ -1315,7 +1439,8 @@ class ExamListPage(QWidget):
                     # Campos de randomização
                     gerar_versoes_randomizadas=True,
                     quantidade_versoes=quantidade,
-                    sufixo_versao=f"TIPO {tipo}"
+                    sufixo_versao=f"TIPO {tipo}",
+                    questoes_config=questoes_config if questoes_config else None
                 )
 
                 result_path = export_controller.exportar_lista_randomizada(opcoes, indice_versao=i)

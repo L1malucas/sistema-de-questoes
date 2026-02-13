@@ -65,9 +65,11 @@ def escape_latex(text: str) -> str:
     for char, replacement in replacements:
         text = text.replace(char, replacement)
 
-    # 6.1 Escapar $ apenas quando seguido de espaço ou dígito (provavelmente moeda)
-    # IMPORTANTE: Fazer ANTES das substituições Unicode que criam blocos $...$
-    text = re.sub(r'\$(?=\s|\d)', r'\\$', text)
+    # 6.1 Escapar TODOS os $ restantes (moeda, etc.)
+    # Neste ponto, todos os blocos matemáticos ($...$, $$...$$) já foram
+    # preservados como placeholders. Qualquer $ restante é literal e deve ser escapado.
+    # IMPORTANTE: Fazer ANTES das substituições Unicode que criam novos blocos $...$
+    text = text.replace('$', '\\$')
 
     # 6.2 Substituir caracteres Unicode problemáticos
     # Esses caracteres não são suportados pelo pdflatex por padrão
@@ -86,6 +88,7 @@ def escape_latex(text: str) -> str:
         ('×', r'$\times$'),  # Multiplicação
         ('÷', r'$\div$'),    # Divisão
         ('°', r'$^\circ$'),  # Grau
+        ('º', r'\textordmasculine{}'),  # Ordinal masculino
         ('²', r'$^2$'),      # Quadrado
         ('³', r'$^3$'),      # Cubo
         ('½', r'$\frac{1}{2}$'),  # Meio
